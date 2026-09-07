@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>wolfv3.7</title>
+    <style>
+        body { font-family: sans-serif; background: #66aaff; padding: 10px; color: #333; font-size: 13px; margin: 0; }
+        .container { max-width: 900px; margin: 10px auto; background: #ffffff; padding: 15px; border-radius: 12px; box-shadow: 0 8px 16px rgba(0,0,0,0.3); box-sizing: border-box; }
+        h1 { text-align: center; color: #2c3e50; margin: 5px 0; font-size: 1.4em; }
+        .subtitle { text-align: center; color: #7f8c8d; margin-bottom: 15px; font-size: 0.8em; }
+        
+        /* 行動表・マトリクス表を配置する親コンテナ（余白確保） */
+        .matrix-container {
+            min-height: 220px; 
+            min-width: 280px;
+            padding: 12px;
+            background-color: #fafafa;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            overflow-x: auto;
+        }
+
+        .matrix-table {
+            width: 100%;
+            table-layout: fixed;
+            border-collapse: collapse;
+            font-size: 11px;
+            text-align: center;
+        }
+
+        .matrix-table th, .matrix-table td {
+            border: 1px solid #bdc3c7;
+            padding: 6px 4px;
+        }
+
+        /* 1列目：対象プレイヤー名エリアの幅 */
+        .matrix-table th:first-child,
+        .matrix-table td:first-child {
+            width: 140px;
+            text-align: center;
+        }
+
+        /* 2列目以降：CO枠（1人あたりの固定幅） */
+        .matrix-table th:not(:first-child),
+        .matrix-table td:not(:first-child) {
+            width: 100px;
+            text-align: center;
+        }
+
+        .white-result { color: #2ecc71; font-weight: bold; background: #f2fbf5; }
+        .black-result { color: #000000; font-weight: bold; background: #fdf3f2; }
+        .guard-result { color: #3498db; font-weight: bold; background: #edf7fd; }
+        
+        .log-box { background: #1e1e1e; color: #fff; padding: 10px; height: 320px; overflow-y: auto; border-radius: 6px; font-family: monospace; margin-bottom: 15px; line-height: 1.5; border: 2px solid #34495e; }
+        .system { color: #57cc99; font-weight: bold; }
+        .divine-log { color: #f1c40f; font-weight: bold; }
+        .medium-log { color: #3498db; font-weight: bold; }
+        .wolf-talk { color: #ff6b6b; font-weight: bold; }
+        .hunter-gj { color: #2ecc71; font-weight: bold; }
+        .co-alert { color: #e67e22; font-weight: bold; font-size: 1.1em; background: #fef5ec; padding: 4px; border-left: 4px solid #e67e22; margin: 4px 0; }
+        .game-over { color: #f1c40f; font-weight: bold; font-size: 1.2em; text-align: center; display: block; margin: 10px 0; }
+        
+        .btn { background: #34495e; color: white; border: none; padding: 8px 12px; margin: 4px; border-radius: 4px; cursor: pointer; font-size: 12px; transition: background 0.2s; }
+        .btn:hover { background: #233142; }
+        .btn:disabled { background: #bdc3c7; cursor: not-allowed; }
+        
+        .cmd-area { background: #f4f6f7; border: 1px solid #d5dbdb; padding: 10px; border-radius: 8px; margin-bottom: 15px; text-align: center; }
+        .cmd-title { font-weight: bold; color: #2c3e50; margin-bottom: 5px; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
+        .btn-force-co { font-weight: bold; color: white; margin: 4px; }
+        .btn-force-seer { background: #9b59b6; }
+        .btn-force-seer:hover { background: #8e44ad; }
+        .btn-force-med { background: #2980b9; }
+        .btn-force-med:hover { background: #2471a3; }
+        .btn-force-hunt { background: #27ae60; }
+        .btn-force-hunt:hover { background: #219a52; }
+        
+        .btn-divine-order { background: #9b59b6; font-weight: bold; padding: 10px 15px; font-size: 13px; }
+        .btn-auto-order { background: #16a085; font-weight: bold; padding: 10px 15px; font-size: 13px; }
+        .btn-retry { background: #2ecc71; font-weight: bold; font-size: 14px; padding: 10px 20px; display: block; margin: 15px auto 0 auto; }
+        
+        .choices { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; justify-content: center; align-items: center; }
+        .cb-label { background: #f1f3f5; padding: 6px 10px; border-radius: 4px; border: 1px solid #ced4da; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; font-size: 12px; }
+        
+        .status-panel { background: #f8f9fa; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-size: 12px; display: flex; justify-content: space-between; border-left: 5px solid #34495e; }
+        .phase-title { color: white; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 0.9em; display: inline-block; margin-bottom: 5px; }
+        
+        .achieve-area { margin-top: 20px; background: #22313f; padding: 12px; border-radius: 8px; color: white; }
+        .achieve-title { font-weight: bold; font-size: 1em; border-bottom: 1px solid #34495e; padding-bottom: 5px; margin-bottom: 10px; color: #f1c40f; }
+        .achieve-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; }
+        .achieve-card { background: #2c3e50; border: 2px solid #34495e; padding: 8px; border-radius: 6px; font-size: 11px; opacity: 0.35; transition: all 0.3s; }
+        .achieve-card.unlocked { opacity: 1; border-color: #f1c40f; background: #34495e; box-shadow: 0 0 6px rgba(241, 196, 15, 0.4); }
+        .achieve-name { font-weight: bold; color: #bdc3c7; margin-bottom: 3px; }
+        .unlocked .achieve-name { color: #f1c40f; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div><a href="/calendar" style="font-size: 1.1em; font-weight: bold; color: #000000;text-decoration: none;">＜カレンダーへ戻る</a></div>
+    
+    <div class="matrix-container">
+        <table class="matrix-table">
+            <thead id="tableHeader"></thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+
+    <div class="cmd-area">
+        <div class="cmd-title">⚙️ 観測者特権：強制CO命令コマンド</div>
+        <button class="btn btn-force-co btn-force-seer" id="forceSeerBtn" onclick="triggerForceSeerCO()">🔮 占い師強制CO</button>
+        <button class="btn btn-force-co btn-force-med" id="forceMedBtn" onclick="triggerForceMediumCO()">⚱️ 霊媒師強制CO</button>
+        <button class="btn btn-force-co btn-force-hunt" id="forceHuntBtn" onclick="triggerForceHunterCO()">🛡️ 狩人強制CO</button>
+    </div>
+
+    <div class="status-panel" id="statusPanel"></div>
+    <div class="log-box" id="logBox"></div>
+    
+    <div id="actionArea">
+        <h3 id="actionTitle" style="text-align: center; font-size: 1.1em; margin: 5px 0;">あなたの介入:</h3>
+        <div class="choices" id="choiceButtons"></div>
+    </div>
+
+    <div id="retryArea" style="display: none;">
+        <button class="btn btn-retry" onclick="setupGame()">もう一度遊ぶ（村をリセット）</button>
+    </div>
+
+    <div class="achieve-area">
+        <div class="achieve-title">🏆 観測者のアチーブメント（実績保存）</div>
+        <div class="achieve-grid" id="achieveGrid">
+            <div class="achieve-card" id="ach_shinban">
+                <div class="achieve-name">【神算鬼謀】</div>
+                <div>4人以上の広域候補から裏で人狼をピンポイント的中。</div>
+            </div>
+            <div class="achieve-card" id="ach_gj">
+                <div class="achieve-name">【絶対防壁】</div>
+                <div>狩人の守護候補を3人以上に広げた状態で襲撃を弾く。</div>
+            </div>
+            <div class="achieve-card" id="ach_chaos">
+                <div class="achieve-name">【五里霧中】</div>
+                <div>生存者全員を占いの候補に指定して夜を迎える。</div>
+            </div>
+            <div class="achieve-card" id="ach_perfect">
+                <div class="achieve-name">【パーフェクト】</div>
+                <div>村の犠牲者（処刑・噛み）を誰も出さずに人狼を殲滅する。</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function forceAllActions(targetId) {
+    if (!nightPhase) { alert("夜フェーズのみ使用可能です。"); return; }
+    addLog(`📢 【観測者命令】全役職者に ${players.find(p => p.id === targetId).name} への能力行使を強制！`, "co-alert");
+    
+    activeSeerIdsToOrder.forEach(sid => nightSelectedSeers[sid] = [targetId]);
+    nightSelectedMedium = [targetId];
+    nightSelectedHunter = [targetId];
+
+    executeAllNightActions();
+}
+
+let day = 1;
+let players = [];
+const npcNames = ["アリス", "ボブ", "クリス", "デイビッド", "エレン", "フレッド", "ジョージ", "ハリス", "アイザック"];
+
+let trueSeerId = null;
+let mediumId = null; 
+let hunterId = null;
+
+let coPlayersList = []; 
+let deadList = []; 
+let lastExecutedId = null;
+
+let lastDaySeerResults = {}; 
+let lastDayMediumResults = "";
+let lastDayHunterLog = "";
+
+let wolfPlayers = [];
+let madmanPlayerId = null;
+
+let nightPhase = null;
+let activeSeerIdsToOrder = [];
+let currentSeerOrderIndex = 0;
+let nightSelectedSeers = {};
+let nightSelectedMedium = [];
+let nightSelectedHunter = [];
+
+const ACHIEVEMENT_KEY = "yureba_werewolf_achievements";
+let unlockedAchievements = { shinban: false, gj: false, chaos: false, perfect: false };
+
+function loadAchievements() {
+    try {
+        let saved = localStorage.getItem(ACHIEVEMENT_KEY);
+        if (saved) unlockedAchievements = JSON.parse(saved);
+    } catch (e) { console.log("Storage restricted."); }
+}
+
+function saveAchievements() {
+    try { localStorage.setItem(ACHIEVEMENT_KEY, JSON.stringify(unlockedAchievements)); } catch (e) {}
+    drawAchievements();
+}
+
+function unlock(id) {
+    if (!unlockedAchievements[id]) {
+        unlockedAchievements[id] = true;
+        saveAchievements();
+        let card = document.getElementById("ach_" + id);
+        if (card) addLog(`🎉 実績解除!! : ${card.querySelector('.achieve-name').innerText}`, "system");
+    }
+}
+
+function drawAchievements() {
+    for (let key in unlockedAchievements) {
+        let el = document.getElementById("ach_" + key);
+        if (el) {
+            if (unlockedAchievements[key]) el.classList.add("unlocked");
+            else el.classList.remove("unlocked");
+        }
+    }
+}
+
+function setupGame() {
+    day = 1;
+    nightPhase = null;
+    players = [{ id: 0, name: "あなた", role: "観測者", isAlive: true, isWolf: false, isMadman: false, actionRecords: {}, evalMap: {} }];
+    trueSeerId = null; mediumId = null; hunterId = null;
+    coPlayersList = []; deadList = []; lastExecutedId = null; wolfPlayers = []; madmanPlayerId = null;
+    lastDaySeerResults = {}; lastDayMediumResults = ""; lastDayHunterLog = "";
+    
+    document.getElementById("logBox").innerHTML = "";
+    document.getElementById("actionArea").style.display = "block";
+    document.getElementById("retryArea").style.display = "none";
+    
+    document.getElementById("forceSeerBtn").disabled = false;
+    document.getElementById("forceMedBtn").disabled = false;
+    document.getElementById("forceHuntBtn").disabled = false;
+    
+    npcNames.forEach((name, index) => {
+        players.push({
+            id: index + 1, name: name, role: "村人", isAlive: true, isWolf: false, isMadman: false,
+            actionRecords: {}, isBroken: false, hasCO: false, coRole: null, evalMap: {}
+        });
+    });
+    
+    let pool = [1,2,3,4,5,6,7,8,9];
+    shuffle(pool);
+    
+    let w1 = pool.pop(); players[w1].role = "人狼"; players[w1].isWolf = true; wolfPlayers.push(w1);
+    let w2 = pool.pop(); players[w2].role = "人狼"; players[w2].isWolf = true; wolfPlayers.push(w2);
+    let madman = pool.pop(); players[madman].role = "狂人"; players[madman].isMadman = true; madmanPlayerId = madman;
+    let seer = pool.pop(); players[seer].role = "占い師"; trueSeerId = seer;
+    let med = pool.pop(); players[med].role = "霊媒師"; mediumId = med;
+    let hunt = pool.pop(); players[hunt].role = "狩人"; hunterId = hunt;
+    
+    if (Math.random() < 0.1) {
+        addCOPlayer(trueSeerId, "占い師");
+    }
+    let wolfCOTriggered = false;
+    if (Math.random() < 0.3) {
+        addCOPlayer(w1, "占い師");
+        wolfCOTriggered = true;
+    }
+    if (!wolfCOTriggered && Math.random() < 0.3) {
+        addCOPlayer(w2, "占い師");
+    }
+    if (Math.random() < 0.4) {
+        addCOPlayer(madman, "占い師");
+    }
+
+    players.forEach(p => {
+        players.forEach(target => { if(p.id !== target.id) p.evalMap[target.id] = "unknown"; });
+        if(p.isWolf) {
+            players.forEach(target => { if(target.isWolf && p.id !== target.id) p.evalMap[target.id] = "white"; });
+        }
+    });
+
+    loadAchievements();
+    drawAchievements();
+    execInitialDivine();
+    updateStatusPanel();
+    
+    addLog(`【ゲーム開始】統合マトリクス搭載。COしたすべての役職の行動データが自動追記されます。`, "system");
+    
+    drawMatrixTable();
+    startDayDiscussion();
+}
+
+function addCOPlayer(id, role) {
+    if (players[id].hasCO && players[id].coRole === role) return;
+    players[id].hasCO = true;
+    players[id].coRole = role;
+    coPlayersList.push({ id: id, role: role });
+    coPlayersList.sort((a, b) => {
+        const order = { "占い師": 1, "霊媒師": 2, "狩人": 3 };
+        if (order[a.role] !== order[b.role]) return order[a.role] - order[b.role];
+        return a.id - b.id;
+    });
+}
+
+function triggerForceSeerCO() {
+    addLog(`📢 【観測者命令】「生存している占い師は全員名乗り出なさい！」`, "co-alert");
+    document.getElementById("forceSeerBtn").disabled = true;
+    let newCOs = [];
+    
+    if (players[trueSeerId].isAlive && (!players[trueSeerId].hasCO || players[trueSeerId].coRole !== "占い師")) {
+        newCOs.push(trueSeerId);
+    }
+    let currentWolvesInSeer = coPlayersList.filter(cp => cp.role === "占い師" && players[cp.id].isWolf).length;
+    wolfPlayers.forEach(wid => {
+        if (players[wid].isAlive && !players[wid].hasCO && currentWolvesInSeer === 0) {
+            if (Math.random() < 0.4 && !newCOs.some(id => players[id].isWolf)) newCOs.push(wid);
+        }
+    });
+    if (players[madmanPlayerId].isAlive && !players[madmanPlayerId].hasCO) {
+        if (Math.random() < 0.5) newCOs.push(madmanPlayerId);
+    }
+    
+    if (newCOs.length > 0) {
+        newCOs.forEach(id => {
+            addCOPlayer(id, "占い師");
+            for(let d = 1; d <= day; d++) {
+                let choices = players.filter(p => p.id !== 0 && p.id !== id);
+                shuffle(choices);
+                let target = choices[0];
+                let sign = (id === trueSeerId) ? (target.isWolf ? "●" : "○") : (players[id].isWolf ? (target.isWolf ? "○" : (Math.random() < 0.3 ? "●" : "○")) : (Math.random() < 0.4 ? "●" : "○"));
+                players[id].actionRecords[target.id] = `${sign}(${d}d)`;
+            }
+            let records = players[id].actionRecords;
+            let lastTargetId = Object.keys(records).pop();
+            if (lastTargetId) {
+                lastDaySeerResults[id] = `${players[lastTargetId].name} さん ➔ 【${records[lastTargetId].includes("●") ? "人狼" : "人間"}】`;
+            }
+            addLog(`📢 対抗出現！ ${players[id].name} が占い師として名乗り出ました！`, "co-alert");
+        });
+        drawMatrixTable();
+        checkProvingBreak();
+    } else {
+        addLog(`[システム] 新たに名乗り出る占い師はいませんでした。`, "system");
+    }
+}
+
+function triggerForceMediumCO() {
+    addLog(`📢 【観測者命令】「生存している霊媒師は全員名乗り出なさい！」`, "co-alert");
+    document.getElementById("forceMedBtn").disabled = true;
+    let announced = false;
+
+    if (players[mediumId].isAlive && (!players[mediumId].hasCO || players[mediumId].coRole !== "霊媒師")) {
+        addCOPlayer(mediumId, "霊媒師");
+        addLog(`📢 霊媒CO：${players[mediumId].name} 「私が本物の【霊媒師】です！」`, "co-alert");
+        announced = true;
+    }
+    wolfPlayers.forEach(wid => {
+        if (players[wid].isAlive && !players[wid].hasCO && Math.random() < 0.3) {
+            addCOPlayer(wid, "霊媒師");
+            addLog(`📢 霊媒CO：${players[wid].name} 「騙されるな、私が【霊媒師】だ！」`, "co-alert");
+            announced = true;
+        }
+    });
+    if (players[madmanPlayerId].isAlive && !players[madmanPlayerId].hasCO && Math.random() < 0.4) {
+        addCOPlayer(madmanPlayerId, "霊媒師");
+        addLog(`📢 霊媒CO：${players[madmanPlayerId].name} 「私こそが真の【霊媒師】です！」`, "co-alert");
+        announced = true;
+    }
+    if(!announced) addLog(`[システム] 新たに名乗り出る霊媒師はいませんでした。`, "system");
+    drawMatrixTable();
+}
+
+function triggerForceHunterCO() {
+    addLog(`📢 【観測者命令】「生存している狩人は全員名乗り出なさい！」`, "co-alert");
+    document.getElementById("forceHuntBtn").disabled = true;
+    let announced = false;
+
+    if (players[hunterId].isAlive && (!players[hunterId].hasCO || players[hunterId].coRole !== "狩人")) {
+        addCOPlayer(hunterId, "狩人");
+        addLog(`📢 狩人CO：${players[hunterId].name} 「私が本物の【狩人】だ。今夜は任せろ！」`, "co-alert");
+        announced = true;
+    }
+    wolfPlayers.forEach(wid => {
+        if (players[wid].isAlive && !players[wid].hasCO && Math.random() < 0.3) {
+            addCOPlayer(wid, "狩人");
+            addLog(`📢 狩人CO：${players[wid].name} 「いや、私こそが本物の【狩人】だ！」`, "co-alert");
+            announced = true;
+        }
+    });
+    if (players[madmanPlayerId].isAlive && !players[madmanPlayerId].hasCO && Math.random() < 0.4) {
+        addCOPlayer(madmanPlayerId, "狩人");
+        addLog(`📢 狩人CO：${players[madmanPlayerId].name} 「私を護衛役として信じてください、私が【狩人】です！」`, "co-alert");
+        announced = true;
+    }
+    if(!announced) addLog(`[システム] 新たに名乗り出る狩人ははいませんでした。`, "system");
+    drawMatrixTable();
+}
+
+function shuffle(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+}
+
+function execInitialDivine() {
+    coPlayersList.filter(cp => cp.role === "占い師").forEach(cp => {
+        let sid = cp.id;
+        let targets = players.filter(p => p.id !== 0 && p.id !== sid);
+        shuffle(targets);
+        let realTarget = targets[0];
+        let resultSign = "○";
+
+        if (sid === trueSeerId) {
+            resultSign = realTarget.isWolf ? "●" : "○";
+            players[sid].evalMap[realTarget.id] = realTarget.isWolf ? "black" : "white";
+        } else if (players[sid].isWolf) {
+            resultSign = realTarget.isWolf ? "○" : (Math.random() < 0.3 ? "●" : "○");
+        } else if (players[sid].isMadman) {
+            resultSign = Math.random() < 0.4 ? "●" : "○";
+        }
+
+        const seer = players.find(p => p.id === sid);
+        seer.actionRecords[realTarget.id] = `${resultSign}(1d)`;
+        lastDaySeerResults[sid] = `${realTarget.name} さん ➔ 【${resultSign === "●" ? "人狼" : "人間"}】`;
+    });
+}
+
+function drawMatrixTable() {
+    const header = document.getElementById("tableHeader");
+    const body = document.getElementById("tableBody");
+    if (!header || !body) return;
+
+    const MAX_CO_SLOTS = 8;
+
+    let mentalRolePlayers = players
+        .filter(p => p.hasCO && (p.coRole === "占い師" || p.coRole === "霊媒師"))
+        .sort((a, b) => {
+            if (a.coRole === b.coRole) return 0;
+            return a.coRole === "占い師" ? -1 : 1;
+        });
+
+    let html = `<tr><th colspan="${MAX_CO_SLOTS + 1}" style="background:#2c3e50; color:white;">被占いマトリクス</th></tr>`;
+    html += `<tr><th>対象＼占師</th>`;
+    
+    for (let i = 0; i < MAX_CO_SLOTS; i++) {
+        let p = mentalRolePlayers[i];
+        if (p) {
+            let bg = p.coRole === "占い師" ? "#ebdef0" : "#d6eaf8";
+            let color = p.coRole === "占い師" ? "#7d3c98" : "#2874a6";
+            let displayName = p.isAlive ? p.name : `<s>${p.name}</s>`;
+            html += `<th style="background:${bg}; color:${color};">${displayName}</th>`;
+        } else {
+            html += `<th></th>`;
+        }
+    }
+    html += `</tr>`;
+
+    players.forEach(target => {
+        if (target.id === 0) return;
+        let displayName = target.isAlive ? target.name : `<s>${target.name}</s>`;
+        html += `<tr><td style="font-weight:bold;">${displayName}</td>`;
+        
+        for (let i = 0; i < MAX_CO_SLOTS; i++) {
+            let p = mentalRolePlayers[i];
+            if (p) {
+                let record = p.actionRecords[target.id] || "-";
+                let color = record.includes("●") ? "#000000" : (record.includes("○") ? "#2ecc71" : "#bdc3c7");
+                
+                let displayRecord = "-";
+                if (record !== "-") {
+                    let match = record.match(/\((\d+)d\)/);
+                    if (match) {
+                        let mark = record.replace(/\(\d+d\)/, "");
+                        displayRecord = `${match[1]}d${mark}`;
+                    } else {
+                        displayRecord = record;
+                    }
+                }
+
+                html += `<td style="color:${color}; font-weight:bold;">${displayRecord}</td>`;
+            } else {
+                html += `<td></td>`;
+            }
+        }
+        html += `</tr>`;
+    });
+
+    header.innerHTML = "";
+    body.innerHTML = html;
+}
+
+function updateStatusPanel() {
+    const isNight = (nightPhase !== null);
+    const buttons = ["forceSeerBtn", "forceMedBtn", "forceHuntBtn"];
+    buttons.forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) btn.disabled = isNight;
+    });
+
+    let listStr = players.map(p => {
+        if (p.id === 0) return `<b>${p.name}</b>`;
+        let suffix = "";
+        if (p.hasCO && p.coRole) {
+            let s = p.coRole === "占い師" ? "占" : (p.coRole === "霊媒師" ? "霊" : "狩");
+            suffix = `(${s})`;
+        }
+        return p.isAlive ? `${p.name}${suffix}` : `<s>${p.name}</s>`;
+    }).join(" | ");
+    
+    const panel = document.getElementById("statusPanel");
+    if (panel) {
+        panel.innerHTML = `
+            <div><b>日付:</b> ${day}日目</div>
+            <div><b>生存:</b> ${listStr}</div>
+        `;
+    }
+}
+
+function appendRoleSpecificButtons(roleType) {
+    const btnArea = document.getElementById("choiceButtons");
+    const div = document.createElement("div");
+    div.style.border = "1px solid #e67e22";
+    div.style.margin = "10px 0";
+    div.style.padding = "5px";
+    div.innerHTML = `<div class="cmd-title">⚡ ${roleType} 個別指定（夜間介入）</div>`;
+    
+    players.filter(p => p.isAlive && p.id !== 0).forEach(p => {
+        const b = document.createElement("button");
+        b.className = "btn"; b.style.backgroundColor = "#e67e22";
+        b.innerText = p.name;
+        b.onclick = () => forceActionByRole(roleType, p.id);
+        div.appendChild(b);
+    });
+    btnArea.appendChild(div);
+}
+
+function forceActionByRole(roleType, targetId) {
+    const targetName = players.find(p => p.id === targetId).name;
+    addLog(`📢 【観測者命令】${roleType}よ、${targetName} を対象にせよ！`, "co-alert");
+    
+    if (roleType === "占い師") {
+        let currentSeerId = activeSeerIdsToOrder[currentSeerOrderIndex];
+        nightSelectedSeers[currentSeerId] = [targetId];
+        currentSeerOrderIndex++; 
+        renderNightSelectionUI();
+    } else if (roleType === "霊媒師") {
+        nightSelectedMedium = [targetId];
+        nightPhase = "hunter"; 
+        renderNightSelectionUI();
+    } else if (roleType === "狩人") {
+        nightSelectedHunter = [targetId];
+        executeAllNightActions();
+    }
+}
+
+function addLog(text, type = "") {
+    const logBox = document.getElementById("logBox");
+    if (!logBox) return;
+    const p = document.createElement("p");
+    if (type) p.className = type;
+    p.innerText = text;
+    logBox.appendChild(p);
+    logBox.scrollTop = logBox.scrollHeight;
+}
+
+function startDayDiscussion() {
+    addLog(`--- 【${day}日目：昼の議論】 ---`, "system");
+    drawMatrixTable();
+    
+    coPlayersList.forEach(cp => {
+        const pObj = players.find(p => p.id === cp.id);
+        if (pObj.isAlive) {
+            if (cp.role === "占い師" && lastDaySeerResults[cp.id]) {
+                addLog(`${pObj.name}(占): 昨晩の結果 ${lastDaySeerResults[cp.id]}`, "divine-log");
+            }
+        }
+    });
+
+    if (day > 1 && lastDayMediumResults) {
+        addLog(lastDayMediumResults, "medium-log");
+    }
+    if (day > 1 && lastDayHunterLog) {
+        addLog(lastDayHunterLog, "hunter-gj");
+    }
+    
+    checkProvingBreak();
+    showVoteChoices();
+}
+
+function checkProvingBreak() {
+    coPlayersList.filter(cp => cp.role === "占い師").forEach(cp => {
+        const seer = players.find(p => p.id === cp.id);
+        if (!seer.isAlive) return;
+        if (seer.actionRecords[seer.id] && seer.actionRecords[seer.id].includes("●")) {
+            if(!seer.isBroken) {
+                addLog(`⚠️【破綻】占い師 ${seer.name} は自分に黒を出しています！`, "system");
+                seer.isBroken = true;
+                players.forEach(p => { if(p.id !== seer.id) p.evalMap[seer.id] = "black"; });
+            }
+        }
+    });
+}
+
+function showVoteChoices() {
+    document.getElementById("actionTitle").innerText = "あなたの介入（投票指示）:";
+    const btnArea = document.getElementById("choiceButtons");
+    if (!btnArea) return; btnArea.innerHTML = "";
+    
+    const freeBtn = document.createElement("button");
+    freeBtn.className = "btn btn-free";
+    freeBtn.innerText = "⏳ 【自由投票】脳内ブラックリストや黒判定へ突撃";
+    freeBtn.onclick = () => { processNPCVotes("free"); };
+    btnArea.appendChild(freeBtn);
+    
+    const greyBtn = document.createElement("button");
+    greyBtn.className = "btn btn-grey";
+    greyBtn.innerText = "🎲 【グレラン】誰からも占われていない完全グレー位置";
+    greyBtn.onclick = () => { processNPCVotes("grey"); };
+    btnArea.appendChild(greyBtn);
+    
+    players.forEach(p => {
+        if (p.id !== 0 && p.isAlive) {
+            const btn = document.createElement("button");
+            btn.className = "btn";
+            btn.innerText = `${p.name} へのヘイト誘導`;
+            btn.onclick = () => { processNPCVotes(p.id); };
+            btnArea.appendChild(btn);
+        }
+    });
+}
+
+function processNPCVotes(mode, attempt = 1) {
+    if (attempt === 1) addLog(`--- 【開票結果：絶対服従モード】 ---`, "system");
+
+    let voteCounts = {};
+    players.forEach(p => { if (p.id !== 0 && p.isAlive) voteCounts[p.id] = 0; });
+    let aliveNPCs = players.filter(p => p.id !== 0 && p.isAlive);
+
+    let trueSeer = players.find(p => p.id === trueSeerId);
+    let trueMed = players.find(p => p.id === mediumId);
+    let confWhite = [], confBlack = [];
+    if (trueSeer && trueSeer.isAlive) {
+        for (let tid in trueSeer.actionRecords) {
+            if (trueSeer.actionRecords[tid].includes("○")) confWhite.push(Number(tid));
+            if (trueSeer.actionRecords[tid].includes("●")) confBlack.push(Number(tid));
+        }
+    }
+    if (trueMed && trueMed.isAlive) {
+        for (let tid in trueMed.actionRecords) {
+            if (trueMed.actionRecords[tid].includes("人間")) confWhite.push(Number(tid));
+            if (trueMed.actionRecords[tid].includes("人狼")) confBlack.push(Number(tid));
+        }
+    }
+    aliveNPCs.forEach(voter => {
+        coPlayersList.forEach(cp => {
+            if (cp.id === voter.id) return;
+            const pObj = players.find(p => p.id === cp.id);
+            for (let tid in pObj.actionRecords) {
+                let rec = pObj.actionRecords[tid];
+                if ((confWhite.includes(Number(tid)) && rec.includes("●")) || (confBlack.includes(Number(tid)) && rec.includes("○"))) {
+                    voter.evalMap[cp.id] = "black";
+                    pObj.isBroken = true;
+                }
+            }
+        });
+    });
+
+    aliveNPCs.forEach(voter => {
+        let targetId = null;
+
+        if (typeof mode === "number" && players[mode].isAlive && mode !== voter.id) {
+            targetId = mode;
+        }
+        else if (mode === "grey") {
+            let greyTargets = aliveNPCs.filter(p => {
+                if (p.coRole === "占い師" || voter.evalMap[p.id] === "white") return false;
+                let isUntouched = true;
+                coPlayersList.filter(cp => cp.role === "占い師").forEach(cp => {
+                    if (players.find(sp => sp.id === cp.id).actionRecords[p.id]) isUntouched = false;
+                });
+                return isUntouched && p.id !== voter.id;
+            });
+            if (greyTargets.length > 0) targetId = greyTargets[Math.floor(Math.random() * greyTargets.length)].id;
+        }
+
+        if (targetId === null) {
+            let blacks = aliveNPCs.filter(p => voter.evalMap[p.id] === "black" && p.id !== voter.id);
+            if (blacks.length > 0) targetId = blacks[Math.floor(Math.random() * blacks.length)].id;
+            else {
+                let targets = aliveNPCs.filter(p => p.id !== voter.id);
+                targetId = targets.length > 0 ? targets[Math.floor(Math.random() * targets.length)].id : voter.id;
+            }
+        }
+
+        if (targetId !== null) {
+            voteCounts[targetId]++;
+            if (attempt === 1) addLog(`${voter.name} ➔ 【${players[targetId].name}】`);
+        }
+    });
+
+    let highestVoteId = null; let maxVotes = -1;
+    for (let id in voteCounts) { if (voteCounts[id] > maxVotes) { maxVotes = voteCounts[id]; highestVoteId = Number(id); } }
+
+    if (highestVoteId !== null) {
+        const executed = players.find(p => p.id === highestVoteId);
+        executed.isAlive = false; 
+        deadList.push(executed);
+        lastExecutedId = executed.id;
+        addLog(`[審判] ${executed.name} が処刑されました。`, "system");
+        updateStatusPanel(); 
+    }
+
+    if (checkVictory()) return;
+    
+    startNightOrderPhase();
+}
+
+function startNightOrderPhase() {
+    addLog(`--- 【夜のフェーズ：神託の刻】 ---`, "system");
+    nightPhase = "seer";
+    updateStatusPanel();
+    activeSeerIdsToOrder = coPlayersList.filter(cp => cp.role === "占い師" && players.find(p => p.id === cp.id).isAlive).map(cp => cp.id);
+    currentSeerOrderIndex = 0;
+    nightSelectedSeers = {}; nightSelectedMedium = []; nightSelectedHunter = [];
+    renderNightSelectionUI();
+}
+
+function renderNightSelectionUI() {
+    const btnArea = document.getElementById("choiceButtons");
+    if (!btnArea) return; btnArea.innerHTML = "";
+    
+    if (nightPhase === "seer") {
+        if (currentSeerOrderIndex >= activeSeerIdsToOrder.length) {
+            nightPhase = "medium"; renderNightSelectionUI(); return;
+        }
+        let currentSeerId = activeSeerIdsToOrder[currentSeerOrderIndex];
+        const seerObj = players.find(p => p.id === currentSeerId);
+        
+        document.getElementById("actionTitle").innerHTML = `<span class="phase-title" style="background:#9b59b6;">🔮 占い師神託</span><br>【${seerObj.name}】の候補選択:`;
+        let cbContainer = createCheckboxGroup(p => p.id !== 0 && p.id !== currentSeerId && p.isAlive, "seerCb");
+        btnArea.appendChild(cbContainer);
+        
+        appendSubmitAndAutoButtons("seerCb", () => {
+            nightSelectedSeers[currentSeerId] = getCheckedValues("seerCb");
+            currentSeerOrderIndex++; renderNightSelectionUI();
+        }, () => {
+            let choices = players.filter(p => p.id !== 0 && p.id !== currentSeerId && p.isAlive);
+            if (currentSeerId === trueSeerId) {
+                let unknownGreys = choices.filter(p => seerObj.evalMap[p.id] === "unknown" && p.coRole !== "占い師");
+                nightSelectedSeers[currentSeerId] = (unknownGreys.length > 0 ? unknownGreys : choices).slice(0, 3).map(p => p.id);
+            } else {
+                shuffle(choices); nightSelectedSeers[currentSeerId] = choices.slice(0, 2).map(p => p.id);
+            }
+            currentSeerOrderIndex++; renderNightSelectionUI();
+        });
+        
+    } else if (nightPhase === "medium") {
+        let medCOAlives = coPlayersList.filter(cp => cp.role === "霊媒師" && players.find(p => p.id === cp.id).isAlive);
+        let targetCandidates = deadList;
+        if (lastExecutedId !== null) {
+            let lastP = players.find(p => p.id === lastExecutedId);
+            if (lastP) targetCandidates = [lastP];
+        }
+        if (medCOAlives.length === 0 || targetCandidates.length === 0) { nightPhase = "hunter"; renderNightSelectionUI(); return; }
+        
+        document.getElementById("actionTitle").innerHTML = `<span class="phase-title" style="background:#3498db;">⚱️ 霊媒師神託</span><br>霊媒師たちの霊媒対象（本日処刑者）選択:`;
+        let cbContainer = createCheckboxGroup(p => false, "mediumCb", targetCandidates);
+        btnArea.appendChild(cbContainer);
+        
+        appendSubmitAndAutoButtons("mediumCb", () => {
+            nightSelectedMedium = getCheckedValues("mediumCb"); nightPhase = "hunter"; renderNightSelectionUI();
+        }, () => {
+            nightSelectedMedium = [targetCandidates[targetCandidates.length - 1].id];
+            nightPhase = "hunter"; renderNightSelectionUI();
+        });
+        
+    } else if (nightPhase === "hunter") {
+        let huntCOAlives = coPlayersList.filter(cp => cp.role === "狩人" && players.find(p => p.id === cp.id).isAlive);
+        if (huntCOAlives.length === 0) { executeAllNightActions(); return; }
+        
+        document.getElementById("actionTitle").innerHTML = `<span class="phase-title" style="background:#2ecc71;">🛡️ 狩人守護</span><br>狩人たちの守護候補選択:`;
+        let cbContainer = createCheckboxGroup(p => p.id !== 0 && p.coRole !== "狩人" && p.isAlive, "hunterCb");
+        btnArea.appendChild(cbContainer);
+        
+        appendSubmitAndAutoButtons("hunterCb", () => {
+            nightSelectedHunter = getCheckedValues("hunterCb"); executeAllNightActions();
+        }, () => {
+            let alives = players.filter(p => p.id !== 0 && p.coRole !== "狩人" && p.isAlive);
+            let coPlayers = alives.filter(p => p.hasCO && !p.isBroken);
+            let targets = coPlayers.length > 0 ? coPlayers : alives;
+            shuffle(targets); nightSelectedHunter = [targets[0].id];
+            executeAllNightActions();
+        });
+    }
+
+    if (nightPhase === "seer") appendRoleSpecificButtons("占い師");
+    if (nightPhase === "medium") appendRoleSpecificButtons("霊媒師");
+    if (nightPhase === "hunter") appendRoleSpecificButtons("狩人");
+
+    const div = document.createElement("div");
+    div.style.marginTop = "10px";
+    div.innerHTML = `<div class="cmd-title">⚡ 夜間：全役職強制介入</div>`;
+    players.filter(p => p.isAlive && p.id !== 0).forEach(p => {
+        const b = document.createElement("button");
+        b.className = "btn"; b.style.backgroundColor = "#e67e22";
+        b.innerText = `${p.name}へ強制`;
+        b.onclick = () => forceAllActions(p.id);
+        div.appendChild(b);
+    });
+    btnArea.appendChild(div);
+}
+
+function actionSeer() {
+    let activeSeerIds = coPlayersList.filter(cp => cp.role === "占い師" && players.find(p => p.id === cp.id).isAlive).map(cp => cp.id);
+    activeSeerIds.forEach(sid => {
+        let list = nightSelectedSeers[sid];
+        if (!list || list.length === 0) { lastDaySeerResults[sid] = ""; return; }
+        
+        let aliveCount = players.filter(p => p.id !== 0 && p.id !== sid && p.isAlive).length;
+        if (list.length >= aliveCount) { unlock("chaos"); }
+
+        let realTargetId = list[Math.floor(Math.random() * list.length)];
+        let realTarget = players.find(p => p.id === realTargetId);
+        let resultSign = "○";
+        
+        if (sid === trueSeerId) {
+            resultSign = realTarget.isWolf ? "●" : "○";
+            players[sid].evalMap[realTarget.id] = realTarget.isWolf ? "black" : "white";
+            if (resultSign === "●" && list.length >= 4) { unlock("shinban"); }
+        } else if (players[sid].isWolf) {
+            resultSign = "○"; if (!realTarget.isWolf && Math.random() < 0.35) resultSign = "●";
+        } else {
+            resultSign = Math.random() < 0.5 ? "○" : "●";
+        }
+        
+        const seer = players.find(p => p.id === sid);
+        seer.actionRecords[realTargetId] = `${resultSign}(${day + 1}d)`;
+        lastDaySeerResults[sid] = `${realTarget.name} さん ➔ 【${resultSign === "●" ? "人狼" : "人間"}】`;
+    });
+}
+
+function actionMedium() {
+    lastDayMediumResults = "";
+    let medAlives = coPlayersList.filter(cp => cp.role === "霊媒師" && players.find(p => p.id === cp.id).isAlive).map(cp => cp.id);
+    if (medAlives.length === 0 || nightSelectedMedium.length === 0) return;
+
+    let realMedTargetId = nightSelectedMedium[Math.floor(Math.random() * nightSelectedMedium.length)];
+    let realMedTarget = players.find(p => p.id === realMedTargetId);
+    
+    medAlives.forEach(mid => {
+        let isWolfResult = realMedTarget.isWolf;
+        if (mid !== mediumId) {
+            if (players[mid].isWolf) {
+                isWolfResult = realMedTarget.isWolf ? false : (Math.random() < 0.4);
+            } else {
+                isWolfResult = Math.random() < 0.5;
+            }
+        }
+        let txtResult = isWolfResult ? "人狼" : "人間";
+        const medObj = players.find(p => p.id === mid);
+        medObj.actionRecords[realMedTargetId] = `${txtResult}(${day}d)`;
+        if (mid === mediumId) medObj.evalMap[realMedTargetId] = isWolfResult ? "black" : "white";
+    });
+    
+    lastDayMediumResults = `⚱️ 霊媒結果報告：対象 [${realMedTarget.name}] の霊社が行われました（詳細はマトリクス参照）`;
+}
+
+function actionWolfAttack(realGuardIds) {
+    lastDayHunterLog = "";
+    addLog("夜が更け、人狼がひそかに動き出した……");
+    
+    let victims = players.filter(p => p.id !== 0 && p.isAlive && !p.isWolf);
+    
+    if (victims.length > 0) {
+        let coVictims = victims.filter(p => p.hasCO && !p.isBroken);
+        let victim = coVictims.length > 0 && Math.random() < 0.7 ? 
+                     coVictims[Math.floor(Math.random() * coVictims.length)] : 
+                     victims[Math.floor(Math.random() * victims.length)];
+        
+        if (realGuardIds.includes(victim.id)) {
+            lastDayHunterLog = `🛡️ 狩人の裏の守護が完全一致！襲撃から生存者を守り抜きました！`;
+            if (nightSelectedHunter.length >= 3) { unlock("gj"); }
+        } else {
+            victim.isAlive = false; 
+            deadList.push(victim);
+
+            addLog(`💥 翌朝、NPCの [${victim.name}] が無残な姿で発見されました。`, "wolf-talk");
+            
+            coPlayersList.filter(cp => cp.role === "占い師").forEach(cp => {
+                const sObj = players.find(p => p.id === cp.id);
+                if(sObj && sObj.actionRecords[victim.id] && sObj.actionRecords[victim.id].includes("●")) sObj.isBroken = true;
+            });
+        }
+    }
+}
+
+function executeAllNightActions() {
+    actionSeer();
+    actionMedium();
+    
+    let realGuardIds = [];
+    let huntAlives = coPlayersList.filter(cp => cp.role === "狩人" && players.find(p => p.id === cp.id).isAlive).map(cp => cp.id);
+    
+    if (huntAlives.length > 0 && nightSelectedHunter.length > 0) { 
+        huntAlives.forEach(hid => {
+            let targetId = nightSelectedHunter[Math.floor(Math.random() * nightSelectedHunter.length)];
+            const huntObj = players.find(p => p.id === hid);
+            huntObj.actionRecords[targetId] = `🛡️(${day + 1}d)`;
+            realGuardIds.push(targetId);
+        });
+    }
+    
+    actionWolfAttack(realGuardIds);
+
+    nightPhase = null; 
+    updateStatusPanel();
+    if (checkVictory()) return;
+    
+    day++; 
+    drawMatrixTable();
+    startDayDiscussion();
+}
+
+function checkVictory() {
+    const aliveNpcVillagers = players.filter(p => p.id !== 0 && p.isAlive && !p.isWolf).length;
+    const aliveWolves = players.filter(p => p.id !== 0 && p.isAlive && p.isWolf).length;
+    
+    if (aliveWolves === 0) {
+        drawMatrixTable();
+        addLog("🎉【GAME OVER】すべての人狼を追放しました！村の勝利です！", "game-over");
+        if (deadList.length === 0) { unlock("perfect"); }
+        revealAllRoles(); showRetryDisplay(); return true;
+    }
+    if (aliveNpcVillagers <= aliveWolves) {
+        drawMatrixTable(); addLog("🚨【GAME OVER】村が支配されました……人狼の勝利です。", "wolf-talk");
+        revealAllRoles(); showRetryDisplay(); return true;
+    }
+    return false;
+}
+
+function revealAllRoles() {
+    addLog("--- 【最終役職答え合わせ】 ---", "system");
+    players.forEach(p => { if(p.id !== 0) addLog(`${p.name} : 【${p.role}】`); });
+}
+
+function showRetryDisplay() {
+    document.getElementById("actionArea").style.display = "none";
+    document.getElementById("retryArea").style.display = "block";
+}
+
+function createCheckboxGroup(filterFunc, name, customList = null) {
+    const container = document.createElement("div");
+    container.style.display = "flex"; container.style.flexWrap = "wrap"; container.style.gap = "6px"; container.style.justifyContent = "center";
+    let targetPlayers = customList ? customList : players.filter(filterFunc);
+    
+    targetPlayers.forEach(p => {
+        const label = document.createElement("label"); label.className = "cb-label";
+        const cb = document.createElement("input"); cb.type = "checkbox"; cb.value = p.id; cb.name = name;
+        cb.onchange = () => {
+            let btn = document.getElementById("submitPhaseBtn");
+            let checked = document.querySelectorAll(`input[name="${name}"]:checked`);
+            if(btn) { btn.disabled = checked.length === 0; btn.innerText = `${btn.getAttribute("data-base-text")} (${checked.length}人)`; }
+        };
+        label.appendChild(cb); label.appendChild(document.createTextNode(p.name)); container.appendChild(label);
+    });
+    return container;
+}
+
+function appendSubmitAndAutoButtons(cbName, onSubmit, onAuto) {
+    const btnArea = document.getElementById("choiceButtons");
+    
+    const submitBtn = document.createElement("button");
+    submitBtn.className = "btn btn-divine-order"; submitBtn.id = "submitPhaseBtn";
+    submitBtn.setAttribute("data-base-text", "指定候補で決定"); submitBtn.innerText = "指定候補で決定 (0人)";
+    submitBtn.disabled = true; submitBtn.onclick = onSubmit;
+    
+    const autoBtn = document.createElement("button");
+    autoBtn.className = "btn btn-auto-order"; autoBtn.innerText = "🤖 NPCおまかせ自動"; autoBtn.onclick = onAuto;
+    
+    btnArea.appendChild(submitBtn); btnArea.appendChild(autoBtn);
+}
+
+function getCheckedValues(name) { return Array.from(document.querySelectorAll(`input[name="${name}"]:checked`)).map(cb => Number(cb.value)); }
+
+window.onload = function() {
+    setupGame();
+};
+</script>
+
+</body>
+</html>

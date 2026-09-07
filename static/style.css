@@ -1,0 +1,142 @@
+body { font-family: sans-serif; padding: 10px; background: #66aaff; font-size: 14px; margin: 0; }
+.header { display: flex; justify-content: space-between; align-items: center; font-weight: bold; margin-bottom: 10px; }
+.info-box { background:#f6dddd; padding: 10px; border-radius: 8px; margin-bottom: 10px; }
+.status-card { background: #f6dddd; padding: 12px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #aabbcc; }
+.calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; margin: 10px 0; }
+.cell { background: #FFF; padding: 4px; text-align: center; border: 1px solid #ddd; height: 45px; cursor: pointer; position: relative; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+.cell-danger { background-color: #ffcdd2 !important; border: 2px solid #e53935; }
+.calendar-input, textarea { padding: 5px; margin-bottom: 5px; width: 90%; font-family: sans-serif; }
+button { padding: 8px; border-radius: 4px; border: none; background: #4caf50; color: white; cursor: pointer; width: 100%; margin-top: 5px; }
+table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 0.9em; }
+th, td { border: 1px solid #aabbcc; padding: 5px; text-align: center; }
+.list-item { display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 5px 0; font-size: 0.9em; align-items: center; }
+.chart-wrapper { height: 280px; background: #F5F5F5; }
+#currentMonth{background: #FFF;font-size: 20px;padding-top: 5px;}
+
+/* カレンダーセルの削除用×ボタン */
+.cell-delete-btn {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    font-size: 10px;
+    color: #d32f2f;
+    background: #F5F5F5;
+    border-radius: 50%;
+    width: 14px;
+    height: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    cursor: pointer;
+    z-index: 2;
+}
+.cell-delete-btn:hover {
+    background: #f44336;
+    color: #F5F5F5;
+}
+
+/* タブ切り替えエリアのスタイル */
+.tab-buttons {
+    display: flex;
+    background:#f6dddd;
+    border-radius: 6px;
+    padding: 3px;
+    margin-bottom: 10px;
+}
+.tab-btn {
+    flex: 1;
+    padding: 6px;
+    text-align: center;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-weight: bold;
+    color: #666;
+    border-radius: 4px;
+    font-size: 0.85em;
+    margin-top: 0;
+}
+.tab-btn.active {
+    background: #F5F5F5;
+    color: #2196f3;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.tab-pane {
+    display: none;
+}
+.tab-pane.active {
+    display: block;
+}
+
+/* レスポンシブレイアウト：PCでは横並び、スマホでは縦並び */
+.main-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+@media (min-width: 768px) {
+    .main-container {
+        flex-direction: row;
+        align-items: flex-start;
+    }
+    .left-column { flex: 1; }
+    .right-column { flex: 1; }
+}
+
+form {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.login-main {
+    min-height: calc(100vh - 100px); 
+    display: flex;
+    justify-content: center; /* 左右中央 */
+    align-items: center;     /* 上下中央 */
+}
+
+/* 入力エリア全体の設定 */
+.login-box {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    width: 100%;
+    max-width: 360px; 
+    border: 2px solid #696969;
+    border-radius: 10px;
+    padding:30px 20px;
+    background: #ccfeff;
+}
+/* ラベルと入力欄のセット */
+.input-group {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background:#e0f2fe;
+    padding: 5px 10px;
+}
+
+.login-input {
+    height: 30px;
+    width: 220px;
+    box-sizing: border-box;
+}
+
+/* 送信ボタンの配置設定 */
+.submit-group {
+    text-align: center; /* ボタンを中央寄せ */
+    margin-top: 10px;
+}
+
+.submit-btn {
+    padding: 6px 20px;
+    cursor: pointer;
+    background:#e0f2fe;
+    border: 2px solid #7cd3ff;
+}
+textarea,input{
+  border: 1.5px solid #e2e8f0;
+  border-radius: 5px;
+  box-sizing: border-box;
+}

@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="ページの内容を説明する文章">
+    <title>ログイン画面</title>
+    <link rel="stylesheet" href="/static/style.css">
+  </head>
+  <body>
+    <header>
+      <div class="header"></div>
+    </header>
+
+    <main class="login-main">
+      <form class="login-box" id="loginForm">
+        <div style="text-align: center;font-size: 17px;" >カレンダーログイン</div>
+        <div class="input-group">
+          <label>ログインID</label>
+          <input class="login-input" type="text" id="username">
+        </div>
+        <div class="input-group">
+          <label>password</label>
+          <input class="login-input" type="password" id="password">
+        </div>
+        <!-- エラーメッセージ表示用の領域 -->
+        <div id="errorMessage" style="color: red; text-align: center; font-size: 0.9em; min-height: 1.2em;"></div>
+        <div class="submit-group">
+          <input class="submit-btn" type="submit" value="ログイン">
+        </div>
+      </form>
+    </main>
+
+    <script>
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        e.preventDefault(); // 画面リロードを防止
+        
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        const errorMsg = document.getElementById('errorMessage');
+
+        errorMsg.textContent = '';
+
+        try {
+          const res = await fetch('/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+          });
+
+          if (res.ok) {
+            // 認証成功時、トップページ（カレンダー）へ遷移
+            window.location.href = '/calendar';
+          } else {
+            // ID・パスワード誤り時の表示
+            const data = await res.json();
+            errorMsg.textContent = data.detail || 'ログインに失敗しました';
+          }
+        } catch (err) {
+          errorMsg.textContent = '通信エラーが発生しました';
+        }
+      });
+    </script>
+  </body>
+</html>

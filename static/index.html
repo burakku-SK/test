@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>カレンダー</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+</head>
+<body>
+
+    <div class="header">
+        <button onclick="changeMonth(-1)" style="width: auto;background:#ff9800;color:#ffffff;"> 前月</button>
+        <div id="currentMonth"></div>
+        <button onclick="changeMonth(1)" style="width: auto;background:#ff9800;">翌月</button>
+    </div>
+
+    <!-- 上部ステータスカード -->
+    <div class="status-card">
+        <div style="display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; font-size: 0.8em; color: #555; margin-bottom: 8px; border-bottom: 1px solid #aabbcc; padding-bottom: 6px;">
+            <div>目標金額: <input class="calendar-input" type="number" id="targetGoal" onchange="saveAll()" style="width:65px; font-size:1em;">円</div>
+            <div>1日危険ライン: <input class="calendar-input" type="number" id="dangerThreshold" onchange="saveAll()" style="width:55px; font-size:1em;">円</div>
+            <div>給料日: 毎月<input class="calendar-input" type="number" id="payday" min="1" max="31" onchange="saveAll()" style="width:35px; font-size:1em;">日</div>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 5px;">
+            <div id="totalStatus" style="font-weight:bold; font-size: 1.1em; color:#1976d2;"></div>
+            <div style="text-align: center;">
+                <div id="countdownStatus" style="font-size: 0.8em; font-weight: bold; color: #e65100;"></div>
+                <div id="averageStatus" style="font-size: 0.75em; font-weight: bold; color: #2e7d32;"></div>
+            </div>
+        </div>
+    </div>
+        
+    <div class="info-box">
+        <strong>月間収支管理</strong>
+        <table>
+            <tr><th>項目</th><th>金額</th><th>仮</th></tr>
+            <tr><td>収入</td><td><input class="calendar-input" type="number" id="monthlyIncome" style="width:80px;text-align: center;">円</td><td><a href="/wolf" style="font-size: 1.1em; font-weight: bold; color: #000000;text-decoration: none;">A</a></td></tr>
+            <tr><td>固定費</td><td><input class="calendar-input" type="number" id="monthlyFixed" style="width:80px;text-align: center">円</td><td>B</td></tr>
+            <tr><td>予算設定</td><td><input class="calendar-input" type="number" id="monthlyBudget" style="width:80px;text-align: center">円</td><td>C</td></tr>
+        </table>
+        <div id="monthlyBudgetStatus" style="font-weight: bold; color: #d32f2f; margin-top:5px;"></div>
+        <button onclick="saveMonthlyData()" style="background:#4caf50">収支・予算を保存</button>
+    </div>
+
+    <!-- メイン領域（カレンダー ＆ グラフ／メモ切り替えエリア） -->
+    <div class="main-container">
+        <!-- 左側：カレンダー -->
+        <div class="left-column">
+            <div class="info-box">
+                <div style="font-weight: bold; margin-bottom: 5px; font-size: 0.9em; color: #555;">カレンダー（日付クリックでメモ編集 / ×でその日を削除）</div>
+                <div class="calendar-grid" id="calendar"></div>
+            </div>
+        </div>
+
+        <!-- 右側：グラフとメモを切り替えるエリア（デフォルトはグラフ） -->
+        <div class="right-column">
+            <div class="info-box">
+                <!-- 切り替えタブ -->
+                <div class="tab-buttons">
+                    <button class="tab-btn active" onclick="switchTab('chart')" id="btnChart">📊 グラフ表示</button>
+                    <button class="tab-btn" onclick="switchTab('memo')" id="btnMemo">📝 日付のメモ・支出</button>
+                </div>
+
+                <!-- ① グラフ表示ペイン -->
+                <div id="paneChart" class="tab-pane active">
+                    <div class="chart-wrapper">
+                        <canvas id="myChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- ② メモ・支出表示ペイン -->
+                <div id="paneMemo" class="tab-pane">
+                    <div id="paneMemoTitle" style="font-weight:bold; margin-bottom:10px; font-size:1em; color:#333;"></div>
+                    
+                    <!-- メモ入力エリア -->
+                    <div style="margin-bottom: 10px;">
+                        <label style="font-size:0.85em; font-weight:bold; color:#555; display:block; margin-bottom:3px;">今日のメモ・出来事</label>
+                        <textarea id="dayMemo" placeholder="例: 予定のメモ、反省点など..." rows="2" oninput="saveDayMemo()"></textarea>
+                    </div>
+
+                    <hr style="border:0; border-top:1px solid #eee; margin:8px 0;">
+
+                    <!-- チェックリストエリア -->
+                    <div style="font-weight:bold; margin-bottom:5px; font-size:0.9em; color:#555;">チェックリスト</div>
+                    <div style="display: flex; gap: 5px; margin-bottom: 5px;">
+                        <input class="calendar-input" type="text" id="checkItemName" placeholder="チェック項目を入力" style="margin-bottom:0; flex:1;">
+                        <button onclick="addCheckItem()" style="width: auto; margin-top:0; background:#ff9800;">追加</button>
+                    </div>
+                    <div id="checkListContainer" style="margin-bottom: 10px; max-height: 120px; overflow-y: auto;"></div>
+
+                    <hr style="border:0; border-top:1px solid #eee; margin:8px 0;">
+
+                    <!-- 支出追加エリア -->
+                    <div style="font-weight:bold; margin-bottom:5px; font-size:0.9em; color:#555;">支出の追加</div>
+                    <div style="display: flex; gap: 5px; margin-bottom: 5px;">
+                        <input class="calendar-input" type="text" id="itemName" placeholder="項目名" style="margin-bottom:0; flex:1;">
+                        <input class="calendar-input" type="number" id="amount" placeholder="金額(円)" style="margin-bottom:0; width:80px;">
+                        <button onclick="addExpense()" style="width: auto; margin-top:0; background:#ff9800;">追加</button>
+                    </div>
+                    <div id="expenseList" style="margin-top:5px; max-height: 120px; overflow-y: auto;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let cur = new Date();//日付定義
+        let dailyExpenses = {};//カレンダーに紐づく日々の費用定義
+        let dailyMemos = {};//カレンダーに紐づく日々のメモ
+        let dailyChecklists = {};//カレンダーに紐づくチェックリスト
+        let monthlyPlans = {};//
+        let config = { targetGoal: 0, dangerThreshold: 0, payday: 15 };//ヘッダー部分のデフォルトの値 目標金額、危険ライン、給料日日付
+        let selectedDate = new Date().toISOString().split('T')[0];
+        let myChart = null;//グラフ
+
+        // FastAPIからデータベースの最新データを一括取得する
+        // FastAPIからデータベースの最新データを一括取得する
+        async function initData() {
+            try {
+                const res = await fetch('/api/data');
+                if (res.ok) {
+                    const data = await res.json();
+                    dailyExpenses = data.dailyExpenses || {};
+                    dailyMemos = data.dailyMemos || {};
+                    dailyChecklists = data.dailyChecklists || {};
+                    monthlyPlans = data.monthlyPlans || {};
+                    
+                    // サーバーからの設定値を取得（中身が空や部分欠落でもデフォルト値を個別に適用）
+                    const c = data.config || {};
+                    config = {
+                        targetGoal: (c.targetGoal !== undefined && c.targetGoal !== null) ? c.targetGoal : 0,
+                        dangerThreshold: (c.dangerThreshold !== undefined && c.dangerThreshold !== null) ? c.dangerThreshold : 0,
+                        payday: (c.payday !== undefined && c.payday !== null) ? c.payday : 15
+                    };
+                }
+            } catch (e) {
+                console.error("データの読み込みエラー:", e);
+            } finally {
+                // 通信の成功・失敗に関わらず、初回起動時に必ず画面を描画する
+                render();
+            }
+        }
+        
+        //HTMLの対応する場所にデータベースから値を格納する
+        function render() {
+            document.getElementById('targetGoal').value = config.targetGoal || 0;//データベースから目標金額の値を参照、Nullの場合0
+            document.getElementById('dangerThreshold').value = config.dangerThreshold || 0;//データベースから危険ラインの値を参照、Nullの場合0
+            document.getElementById('payday').value = config.payday || 15;//データベースから給料日の値を参照、Nullの場合15
+            
+            const y = cur.getFullYear(), m = cur.getMonth();
+            const monthKey = `${y}-${(m+1).toString().padStart(2,'0')}`;
+            document.getElementById('currentMonth').innerText = `${y}年 ${m + 1}月`;
+
+            // 給料日までのカウントダウン計算
+            const payday = parseInt(config.payday) || 15;
+            const todayReal = new Date();
+            let nextPayday = new Date(todayReal.getFullYear(), todayReal.getMonth(), payday);
+            if (todayReal.getDate() > payday) {
+                nextPayday = new Date(todayReal.getFullYear(), todayReal.getMonth() + 1, payday);
+            } else if (todayReal.getDate() === payday) {
+                nextPayday = new Date(todayReal.getFullYear(), todayReal.getMonth(), payday);
+            }
+            const diffTime = nextPayday - new Date(todayReal.getFullYear(), todayReal.getMonth(), todayReal.getDate());
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            let countdownText = (diffDays === 0) ? "🎉 今日は給料日です！" : `⏳ 給料日まであと ${diffDays} 日`;
+            document.getElementById('countdownStatus').innerText = countdownText;
+
+            // 今月の平均使用金額計算
+            let monthDailyTotal = 0;
+            Object.keys(dailyExpenses).forEach(date => {
+                if(date.startsWith(monthKey)) {
+                    dailyExpenses[date].forEach(e => monthDailyTotal += (parseInt(e.amount)||0));
+                }
+            });
+
+            const isCurrentMonth = (y === todayReal.getFullYear() && m === todayReal.getMonth());
+            let daysCount = isCurrentMonth ? todayReal.getDate() : new Date(y, m + 1, 0).getDate();
+            if (daysCount <= 0) daysCount = 1;
+            const dailyAverage = Math.round(monthDailyTotal / daysCount);
+            document.getElementById('averageStatus').innerText = `📊 1日平均: ${dailyAverage.toLocaleString()}円 (合計: ${monthDailyTotal.toLocaleString()}円)`;
+
+            // 総資産計算
+            let totalIncome = 0; let totalFixed = 0; let totalDaily = 0;
+            Object.values(monthlyPlans).forEach(p => { totalIncome += (parseInt(p.income)||0); totalFixed += (parseInt(p.fixed)||0); });
+            Object.values(dailyExpenses).flat().forEach(e => totalDaily += (parseInt(e.amount)||0));
+            const totalAssets = totalIncome - totalFixed - totalDaily;
+            const percent = config.targetGoal > 0 ? ((totalAssets / config.targetGoal) * 100).toFixed(1) : "0.0";
+            document.getElementById('totalStatus').innerText = `総資産: ${totalAssets.toLocaleString()}円 (${percent}%)`;
+
+            // 今月の予算管理
+            const plan = monthlyPlans[monthKey] || { income: 0, fixed: 0, budget: 0 };
+            document.getElementById('monthlyIncome').value = plan.income;
+            document.getElementById('monthlyFixed').value = plan.fixed;
+            document.getElementById('monthlyBudget').value = plan.budget;
+            
+            let monthDailyExpenseForBudget = 0;
+            Object.keys(dailyExpenses).forEach(date => {
+                if(date.startsWith(monthKey)) dailyExpenses[date].forEach(e => monthDailyExpenseForBudget += (parseInt(e.amount)||0));
+            });
+            const remaining = plan.budget - monthDailyExpenseForBudget;
+            document.getElementById('monthlyBudgetStatus').innerText = `今月の残り予算: ${remaining.toLocaleString()}円`;
+
+            updateCalendar(y, m);
+            updateMemoPaneContent();
+            updateChart();
+        }
+
+        function switchTab(tabName) {
+            const btnChart = document.getElementById('btnChart');
+            const btnMemo = document.getElementById('btnMemo');
+            const paneChart = document.getElementById('paneChart');
+            const paneMemo = document.getElementById('paneMemo');
+
+            if (tabName === 'chart') {
+                btnChart.classList.add('active');
+                btnMemo.classList.remove('active');
+                paneChart.classList.add('active');
+                paneMemo.classList.remove('active');
+            } else {
+                btnMemo.classList.add('active');
+                btnChart.classList.remove('active');
+                paneMemo.classList.add('active');
+                paneChart.classList.remove('active');
+                updateMemoPaneContent();
+            }
+        }
+
+        function updateCalendar(y, m) {
+            const cal = document.getElementById('calendar'); cal.innerHTML = '';
+            const days = new Date(y, m + 1, 0).getDate();
+            const threshold = parseInt(config.dangerThreshold) || 3000;
+            
+            for(let i=1; i<=days; i++){
+                const d = `${y}-${(m+1).toString().padStart(2,'0')}-${i.toString().padStart(2,'0')}`;
+                const hasExpenses = dailyExpenses[d] && dailyExpenses[d].length > 0;
+                const dailyTotal = hasExpenses ? dailyExpenses[d].reduce((sum, e) => sum + (parseInt(e.amount)||0), 0) : 0;
+                const hasMemo = dailyMemos[d] && dailyMemos[d].trim() !== "";
+                const hasChecklist = dailyChecklists[d] && dailyChecklists[d].length > 0;
+                const isDanger = (dailyTotal > threshold);
+                const hasAnyData = hasExpenses || hasMemo || hasChecklist;
+                
+                const div = document.createElement('div');
+                div.className = 'cell ' + (isDanger ? 'cell-danger' : '');
+                div.style.backgroundColor = (d === selectedDate) ? '#e3f2fd' : '';
+                
+                let deleteBtnHtml = hasAnyData ? `<span class="cell-delete-btn" onclick="deleteDayData('${d}', event)" title="この日の情報を削除">×</span>` : '';
+                let mark = (hasMemo || hasChecklist) ? '<span style="color:#2196f3; font-size:0.6em;">📝</span>' : '';
+                
+                div.innerHTML = `${deleteBtnHtml}<span>${i} ${mark}</span><span style="font-size:0.7em">${dailyTotal ? dailyTotal : ''}</span>`;
+                
+                div.onclick = () => {
+                    selectedDate = d;
+                    switchTab('memo');
+                    updateCalendar(y, m);
+                };
+                cal.appendChild(div);
+            }
+        }
+
+        // 指定日のデータを一括削除 (DELETE API)
+        async function deleteDayData(dateStr, event) {
+            event.stopPropagation();
+            if(confirm(`${dateStr} の支出・メモ・チェックリストをすべて削除しますか？`)) {
+                try {
+                    await fetch(`/api/date/${dateStr}`, { method: 'DELETE' });
+                    await initData();
+                } catch (e) {
+                    console.error("日データ削除エラー:", e);
+                }
+            }
+        }
+
+        function updateMemoPaneContent() {
+            document.getElementById('paneMemoTitle').innerText = `${selectedDate} の記録`;
+            document.getElementById('dayMemo').value = dailyMemos[selectedDate] || '';
+            
+            // チェックリスト描画
+            const checkListContainer = document.getElementById('checkListContainer');
+            checkListContainer.innerHTML = '';
+            (dailyChecklists[selectedDate] || []).forEach((c, idx) => {
+                checkListContainer.innerHTML += `
+                    <div class="list-item">
+                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; flex: 1; text-align: left; overflow: hidden;">
+                            <input class="calendar-input" type="checkbox" ${c.checked ? 'checked' : ''} onchange="toggleCheckItem(${idx})" style="width: auto; margin:0;">
+                            <span style="${c.checked ? 'text-decoration: line-through; color: #888;' : ''}">${c.text}</span>
+                        </label>
+                        <button onclick="deleteCheckItem(${idx})" style="width:auto; padding:2px 6px; background:red; margin:0;">削除</button>
+                    </div>`;
+            });
+
+            // 支出リスト描画
+            const list = document.getElementById('expenseList'); 
+            list.innerHTML = '';
+            (dailyExpenses[selectedDate] || []).forEach((e, idx) => {
+                list.innerHTML += `<div class="list-item"><span>${e.item} : ${e.amount}円</span> <button onclick="deleteExpense(${idx})" style="width:auto; padding:2px 6px; background:red; margin:0;">削除</button></div>`;
+            });
+        }
+
+        // メモ保存 (POST API)
+        async function saveDayMemo() {
+            const memoText = document.getElementById('dayMemo').value;
+            try {
+                await fetch('/api/memos', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ date: selectedDate, content: memoText })
+                });
+                if(memoText.trim() === "") {
+                    delete dailyMemos[selectedDate];
+                } else {
+                    dailyMemos[selectedDate] = memoText;
+                }
+                updateCalendar(cur.getFullYear(), cur.getMonth());
+            } catch (e) {
+                console.error("メモ保存エラー:", e);
+            }
+        }
+
+        // チェックリスト追加 (POST API)
+        async function addCheckItem() {
+            const text = document.getElementById('checkItemName').value;
+            if(!text) return alert("チェック項目を入力してね");
+
+            try {
+                const res = await fetch('/api/checklists', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ date: selectedDate, text: text })
+                });
+                if (res.ok) {
+                    document.getElementById('checkItemName').value = '';
+                    await initData();
+                }
+            } catch (e) {
+                console.error("チェックリスト追加エラー:", e);
+            }
+        }
+
+        // チェックリストON/OFF切り替え (PATCH API)
+        async function toggleCheckItem(idx) {
+            if(dailyChecklists[selectedDate] && dailyChecklists[selectedDate][idx]) {
+                const item = dailyChecklists[selectedDate][idx];
+                item.checked = !item.checked;
+                try {
+                    const itemId = item.id || idx;
+                    await fetch(`/api/checklists/${itemId}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ checked: item.checked, date: selectedDate, index: idx })
+                    });
+                    updateMemoPaneContent();
+                } catch (e) {
+                    console.error("チェック切り替えエラー:", e);
+                }
+            }
+        }
+
+        // チェックリスト削除 (DELETE API)
+        async function deleteCheckItem(idx) {
+            if(dailyChecklists[selectedDate] && dailyChecklists[selectedDate][idx]) {
+                const item = dailyChecklists[selectedDate][idx];
+                const itemId = item.id || idx;
+                try {
+                    await fetch(`/api/checklists/${itemId}?date=${selectedDate}&index=${idx}`, { method: 'DELETE' });
+                    await initData();
+                } catch (e) {
+                    console.error("チェックリスト削除エラー:", e);
+                }
+            }
+        }
+
+        // 支出追加 (POST API)
+        async function addExpense() {
+            const item = document.getElementById('itemName').value;
+            const amount = document.getElementById('amount').value;
+            if(!item || !amount) return alert("項目と金額を入力してね");
+
+            try {
+                const res = await fetch('/api/expenses', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        date: selectedDate,
+                        item: item,
+                        amount: parseInt(amount)
+                    })
+                });
+                if (res.ok) {
+                    document.getElementById('itemName').value = '';
+                    document.getElementById('amount').value = '';
+                    await initData();
+                }
+            } catch (e) {
+                console.error("支出追加エラー:", e);
+            }
+        }
+
+        // 支出削除 (DELETE API)
+        async function deleteExpense(idx) {
+            if(dailyExpenses[selectedDate] && dailyExpenses[selectedDate][idx]) {
+                const exp = dailyExpenses[selectedDate][idx];
+                const expId = exp.id || idx;
+                try {
+                    await fetch(`/api/expenses/${expId}?date=${selectedDate}&index=${idx}`, { method: 'DELETE' });
+                    await initData();
+                } catch (e) {
+                    console.error("支出削除エラー:", e);
+                }
+            }
+        }
+
+        // 月間目標・固定費保存 (POST API)
+        async function saveMonthlyData() {
+            const monthKey = `${cur.getFullYear()}-${(cur.getMonth()+1).toString().padStart(2,'0')}`;
+            const income = parseInt(document.getElementById('monthlyIncome').value) || 0;
+            const fixed = parseInt(document.getElementById('monthlyFixed').value) || 0;
+            const budget = parseInt(document.getElementById('monthlyBudget').value) || 0;
+
+            try {
+                await fetch('/api/monthly-plans', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ month: monthKey, income, fixed, budget })
+                });
+                await initData();
+            } catch (e) {
+                console.error("月間データ保存エラー:", e);
+            }
+        }
+
+        // 全般設定保存 (POST API)
+        async function saveAll() {
+            config.targetGoal = parseInt(document.getElementById('targetGoal').value) || 0;
+            config.dangerThreshold = parseInt(document.getElementById('dangerThreshold').value) || 0;
+            config.payday = parseInt(document.getElementById('payday').value) || 15;
+
+            try {
+                await fetch('/api/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
+                
+                // 【修正点】 initData() を呼ばずに render() だけを実行する
+                render(); 
+            } catch (e) {
+                console.error("設定保存エラー:", e);
+            }
+        }
+
+        function changeMonth(n) { 
+            cur.setDate(1); 
+            cur.setMonth(cur.getMonth() + n); 
+            render(); 
+        }
+        
+        function updateChart() {
+            const ctx = document.getElementById('myChart').getContext('2d');
+            const dates = Object.keys(dailyExpenses).sort();
+            if (myChart) myChart.destroy();
+            const sortedMonths = Object.keys(monthlyPlans).sort();
+            const data = dates.map(d => {
+                const currentMonth = d.substring(0, 7);
+                let runningIncome = 0; let runningFixed = 0;
+                sortedMonths.forEach(m => { if (m <= currentMonth) { runningIncome += (monthlyPlans[m].income || 0); runningFixed += (monthlyPlans[m].fixed || 0); }});
+                let runningDailyExpense = 0;
+                dates.forEach(date => { if (date <= d) { runningDailyExpense += dailyExpenses[date].reduce((sum, e) => sum + parseInt(e.amount), 0); } });
+                return runningIncome - runningFixed - runningDailyExpense;
+            });
+            myChart = new Chart(ctx, { 
+                type: 'line', 
+                data: { labels: dates, datasets: [{ label: '総資産推移', data, borderColor: '#2196f3', backgroundColor: 'rgba(33, 150, 243, 0.1)', fill: true }] }, 
+                options: { responsive: true, maintainAspectRatio: false } 
+            });
+        }
+        
+        // アプリ起動時にデータベースからデータをロード
+        initData();
+    </script>
+</body>
+</html>
