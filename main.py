@@ -7,6 +7,15 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 import models
 from database import engine, SessionLocal
+from passlib.context import CryptContext
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def get_password_hash(password: str) -> str:
+    return pwd_context.hash(password)
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return pwd_context.verify(plain_password, hashed_password)
 
 # ディレクトリの絶対パスを取得
 BASE_DIR = Path(__file__).resolve().parent
@@ -72,6 +81,12 @@ class MonthlyConfigSave(BaseModel):
     dangerThreshold: int
     payday: int 
 
+class UserCreate(BaseModel):
+    username: str
+    password: str
+
+class UserUpdate(BaseModel):
+    password: str
 
 # --- API エンドポイント ---
 
@@ -261,3 +276,50 @@ def read_login():
     if not login_file.exists():
         raise HTTPException(status_code=404, detail="static/login.html が見つかりません。")
     return FileResponse(login_file)
+
+# 1. ユーザー登録 (新規作成)
+@app.post("/api/users/register")
+def register_user(user: UserCreate, db: Session = Depends(get_db)):
+    # ユーザー名の重複チェック
+    db_user = db.query(models.UserModel).filter(models.UserModel.username == user.username).first()
+    if db_user:
+        raise HTTPException(status_code=400, detail="このユーザー名は既に使用されています")
+
+    hashed_pwd = get_password_hash(user.password)
+    new_user = models.UserModel(username=user.username, hashed_password=hashed_pwd)
+    
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return {"message": "ユーザー登録が完了しました", "username": new_user.username}
+
+# 2. ログイン（DB参照版に更新）
+@app.post("/api/login")
+def check_login(data: Checklogin, db: Session = Depends(get_db)):
+    db_user = db.query(models.UserModel).filter(models.UserModel.username == data.username).first()
+    if not db_user or not verify_password(data.password, db_user.hashed_password):
+        raise HTTPException(status_code=401, detail="ユーザー名またはパスワードに誤りがあります")
+
+    return {"status": "success", "message": "ログイン成功", "username": db_user.username}
+
+# 3. ユーザー情報の更新 (パスワード変更など)
+@app.put("/api/users/{username}")
+def update_user(username: str, data: UserUpdate, db: Session = Depends(get_db)):
+    db_user = db.query(models.UserModel).filter(models.UserModel.username == username).first()
+    if not db_user:
+        raise HTTPException(status_code=404, detail="ユーザーが見つかりません")
+
+    db_user.hashed_password = get_password_hash(data.password)
+    db.commit()
+    return {"message": "パスワードを更新しました"}
+
+# 4. ユーザー削除 (退会)
+@app.delete("/api/users/{username}")
+def delete_user(username: str, db: Session = Depends(get_db)):
+    db_user = db.query(models.UserModel).filter(models.UserModel.username == username).first()
+    if not db_user:
+        raise HTTPException(status_code=404, detail="ユーザーが見つかりません")
+
+    db.delete(db_user)
+    db.commit()
+    return {"message": f"ユーザー {username} を削除しました"}

@@ -41,3 +41,18 @@ class ConfigModel(Base):
     targetGoal = Column(Integer, default=0)
     dangerThreshold = Column(Integer, default=0)
     payday = Column(Integer, default=15)
+
+from sqlalchemy import Column, Integer, String, DateTime
+from sqlalchemy.sql import func
+from database import Base
+
+from sqlalchemy import Column, Integer, String, Boolean
+from database import Base
+
+class UserModel(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, unique=True, index=True, nullable=False)
+    hashed_password = Column(String, nullable=False)
+    is_active = Column(Boolean, default=True)
