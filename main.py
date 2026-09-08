@@ -9,6 +9,7 @@ import models
 from database import engine, SessionLocal
 from passlib.context import CryptContext
 
+# パスワードハッシュ化設定
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def get_password_hash(password: str) -> str:
@@ -25,7 +26,7 @@ models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
-# 静的ファイルの配信設定（1箇所に集約）
+# 静的ファイルの配信設定
 static_dir = BASE_DIR / "static"
 if static_dir.exists():
     app.mount("/static", StaticFiles(directory=static_dir), name="static")
@@ -88,17 +89,52 @@ class UserCreate(BaseModel):
 class UserUpdate(BaseModel):
     password: str
 
+
 # --- API エンドポイント ---
 
-# 0. ログイン用
-@app.post("/api/login")
-def check_login(data: Checklogin):
-    user = "admin"
-    password = "password"
+# 0. ユーザー管理・認証 API
+@app.post("/api/users/register")
+def register_user(user: UserCreate, db: Session = Depends(get_db)):
+    db_user = db.query(models.UserModel).filter(models.UserModel.username == user.username).first()
+    if db_user:
+        raise HTTPException(status_code=400, detail="このユーザー名は既に使用されています")
 
-    if data.username == user and data.password == password:
-        return {"status": "success", "message": "ログイン成功"}
-    raise HTTPException(status_code=401, detail="認証情報に誤りがあります")
+    hashed_pwd = get_password_hash(user.password)
+    new_user = models.UserModel(username=user.username, hashed_password=hashed_pwd)
+    
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return {"message": "ユーザー登録が完了しました", "username": new_user.username}
+
+@app.post("/api/login")
+def check_login(data: Checklogin, db: Session = Depends(get_db)):
+    db_user = db.query(models.UserModel).filter(models.UserModel.username == data.username).first()
+    if not db_user or not verify_password(data.password, db_user.hashed_password):
+        raise HTTPException(status_code=401, detail="ユーザー名またはパスワードに誤りがあります")
+
+    return {"status": "success", "message": "ログイン成功", "username": db_user.username}
+
+@app.put("/api/users/{username}")
+def update_user(username: str, data: UserUpdate, db: Session = Depends(get_db)):
+    db_user = db.query(models.UserModel).filter(models.UserModel.username == username).first()
+    if not db_user:
+        raise HTTPException(status_code=404, detail="ユーザーが見つかりません")
+
+    db_user.hashed_password = get_password_hash(data.password)
+    db.commit()
+    return {"message": "パスワードを更新しました"}
+
+@app.delete("/api/users/{username}")
+def delete_user(username: str, db: Session = Depends(get_db)):
+    db_user = db.query(models.UserModel).filter(models.UserModel.username == username).first()
+    if not db_user:
+        raise HTTPException(status_code=404, detail="ユーザーが見つかりません")
+
+    db.delete(db_user)
+    db.commit()
+    return {"message": f"ユーザー {username} を削除しました"}
+
 
 # 1. 全データ取得 (初期読み込み用)
 @app.get("/api/data")
@@ -109,14 +145,12 @@ def get_all_data(db: Session = Depends(get_db)):
     monthly_plans = db.query(models.MonthlyPlanModel).all() if hasattr(models, 'MonthlyPlanModel') else []
     config = db.query(models.ConfigModel).first() if hasattr(models, 'ConfigModel') else None
 
-    # 支出データを日付ごとにグループ化
     daily_expenses = {}
     for E in expenses:
         if E.date not in daily_expenses:
             daily_expenses[E.date] = []
         daily_expenses[E.date].append({"id": E.id, "item": E.item, "amount": E.amount})
         
-    # チェックリストデータを日付ごとにグループ化
     daily_checklists = {}
     for C in checklists:
         if C.date not in daily_checklists:
@@ -127,10 +161,8 @@ def get_all_data(db: Session = Depends(get_db)):
     for p in monthly_plans:
         plans_dict[p.month] = {"income": p.income, "fixed": p.fixed, "budget": p.budget}
 
-    # メモデータを辞書化（空文字以外のみ抽出）
     daily_memos = {m.date: m.content for m in memos if m.content and m.content.strip() != ""}
 
-    # 設定値オブジェクト
     config_dict = {
         "targetGoal": config.targetGoal if config else 0,
         "dangerThreshold": config.dangerThreshold if config else 0,
@@ -276,50 +308,3 @@ def read_login():
     if not login_file.exists():
         raise HTTPException(status_code=404, detail="static/login.html が見つかりません。")
     return FileResponse(login_file)
-
-# 1. ユーザー登録 (新規作成)
-@app.post("/api/users/register")
-def register_user(user: UserCreate, db: Session = Depends(get_db)):
-    # ユーザー名の重複チェック
-    db_user = db.query(models.UserModel).filter(models.UserModel.username == user.username).first()
-    if db_user:
-        raise HTTPException(status_code=400, detail="このユーザー名は既に使用されています")
-
-    hashed_pwd = get_password_hash(user.password)
-    new_user = models.UserModel(username=user.username, hashed_password=hashed_pwd)
-    
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-    return {"message": "ユーザー登録が完了しました", "username": new_user.username}
-
-# 2. ログイン（DB参照版に更新）
-@app.post("/api/login")
-def check_login(data: Checklogin, db: Session = Depends(get_db)):
-    db_user = db.query(models.UserModel).filter(models.UserModel.username == data.username).first()
-    if not db_user or not verify_password(data.password, db_user.hashed_password):
-        raise HTTPException(status_code=401, detail="ユーザー名またはパスワードに誤りがあります")
-
-    return {"status": "success", "message": "ログイン成功", "username": db_user.username}
-
-# 3. ユーザー情報の更新 (パスワード変更など)
-@app.put("/api/users/{username}")
-def update_user(username: str, data: UserUpdate, db: Session = Depends(get_db)):
-    db_user = db.query(models.UserModel).filter(models.UserModel.username == username).first()
-    if not db_user:
-        raise HTTPException(status_code=404, detail="ユーザーが見つかりません")
-
-    db_user.hashed_password = get_password_hash(data.password)
-    db.commit()
-    return {"message": "パスワードを更新しました"}
-
-# 4. ユーザー削除 (退会)
-@app.delete("/api/users/{username}")
-def delete_user(username: str, db: Session = Depends(get_db)):
-    db_user = db.query(models.UserModel).filter(models.UserModel.username == username).first()
-    if not db_user:
-        raise HTTPException(status_code=404, detail="ユーザーが見つかりません")
-
-    db.delete(db_user)
-    db.commit()
-    return {"message": f"ユーザー {username} を削除しました"}
