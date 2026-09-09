@@ -75,10 +75,17 @@ class Checklogin(BaseModel):
     password: str
 
 class MonthlySavedata(BaseModel):
+    username: str  # ★ 追加
     month: str
     income: int
     fixed: int
     budget: int
+
+class MonthlyConfigSave(BaseModel):
+    username: str  # ★ 追加
+    targetGoal: int
+    dangerThreshold: int
+    payday: int
 
 class MonthlyConfigSave(BaseModel):
     targetGoal: int
@@ -195,11 +202,19 @@ def add_expense(expense: ExpenseCreate, db: Session = Depends(get_db)):
 # 3. メモ (Memos) API
 @app.post("/api/memos")
 def save_memo(memo: MemoSave, db: Session = Depends(get_db)):
-    db_memo = db.query(models.MemoModel).filter(models.MemoModel.date == memo.date).first()
+    user = db.query(models.UserModel).filter(models.UserModel.username == memo.username).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="ユーザーが見つかりません")
+
+    db_memo = db.query(models.MemoModel).filter(
+        models.MemoModel.date == memo.date,
+        models.MemoModel.user_id == user.id
+    ).first()
+
     if db_memo:
         db_memo.content = memo.content
     else:
-        db_memo = models.MemoModel(date=memo.date, content=memo.content)
+        db_memo = models.MemoModel(date=memo.date, content=memo.content, user_id=user.id)
         db.add(db_memo)
     db.commit()
     return {"message": "success"}
@@ -208,45 +223,29 @@ def save_memo(memo: MemoSave, db: Session = Depends(get_db)):
 # 4. チェックリスト (Checklists) API
 @app.post("/api/checklists")
 def add_checklist(item: CheckListCreate, db: Session = Depends(get_db)):
-    db_item = models.CheckListModel(date=item.date, text=item.text, checked=False)
+    user = db.query(models.UserModel).filter(models.UserModel.username == item.username).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="ユーザーが見つかりません")
+
+    db_item = models.CheckListModel(date=item.date, text=item.text, checked=False, user_id=user.id)
     db.add(db_item)
     db.commit()
     db.refresh(db_item)
     return {"message": "success", "id": db_item.id}
 
-@app.patch("/api/checklists/{checklist_id}")
-def toggle_checklist(checklist_id: int, item: CheckListUpdate, db: Session = Depends(get_db)):
-    db_item = db.query(models.CheckListModel).filter(models.CheckListModel.id == checklist_id).first()
-    if not db_item:
-        raise HTTPException(status_code=404, detail="Checklist item not found")
-    db_item.checked = item.checked
-    db.commit()
-    return {"message": "updated"}
-
-@app.delete("/api/checklists/{checklist_id}")
-def delete_checklist(checklist_id: int, db: Session = Depends(get_db)):
-    db_item = db.query(models.CheckListModel).filter(models.CheckListModel.id == checklist_id).first()
-    if not db_item:
-        raise HTTPException(status_code=404, detail="Checklist item not found")
-    db.delete(db_item)
-    db.commit()
-    return {"message": "deleted"}
-
-
-# 5. 指定日付のデータ一括削除 API
-@app.delete("/api/date/{date_str}")
-def delete_date_data(date_str: str, db: Session = Depends(get_db)):
-    db.query(models.ExpenseModel).filter(models.ExpenseModel.date == date_str).delete()
-    db.query(models.MemoModel).filter(models.MemoModel.date == date_str).delete()
-    db.query(models.CheckListModel).filter(models.CheckListModel.date == date_str).delete()
-    db.commit()
-    return {"message": f"All data for {date_str} deleted"}
-
 
 # 6. 月間収支・予算 (Monthly Plans) API
 @app.post("/api/monthly-plans")
 def save_monthly_plan(plan: MonthlySavedata, db: Session = Depends(get_db)):
-    db_plan = db.query(models.MonthlyPlanModel).filter(models.MonthlyPlanModel.month == plan.month).first()
+    user = db.query(models.UserModel).filter(models.UserModel.username == plan.username).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="ユーザーが見つかりません")
+
+    db_plan = db.query(models.MonthlyPlanModel).filter(
+        models.MonthlyPlanModel.month == plan.month,
+        models.MonthlyPlanModel.user_id == user.id
+    ).first()
+
     if db_plan:
         db_plan.income = plan.income
         db_plan.fixed = plan.fixed
@@ -256,7 +255,8 @@ def save_monthly_plan(plan: MonthlySavedata, db: Session = Depends(get_db)):
             month=plan.month,
             income=plan.income,
             fixed=plan.fixed,
-            budget=plan.budget
+            budget=plan.budget,
+            user_id=user.id
         )
         db.add(db_plan)
     db.commit()
@@ -266,7 +266,11 @@ def save_monthly_plan(plan: MonthlySavedata, db: Session = Depends(get_db)):
 # 7. 全般設定 (Config) API
 @app.post("/api/config")
 def save_config(config: MonthlyConfigSave, db: Session = Depends(get_db)):
-    db_config = db.query(models.ConfigModel).first()
+    user = db.query(models.UserModel).filter(models.UserModel.username == config.username).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="ユーザーが見つかりません")
+
+    db_config = db.query(models.ConfigModel).filter(models.ConfigModel.user_id == user.id).first()
     if db_config:
         db_config.targetGoal = config.targetGoal
         db_config.dangerThreshold = config.dangerThreshold
@@ -275,7 +279,8 @@ def save_config(config: MonthlyConfigSave, db: Session = Depends(get_db)):
         db_config = models.ConfigModel(
             targetGoal=config.targetGoal,
             dangerThreshold=config.dangerThreshold,
-            payday=config.payday
+            payday=config.payday,
+            user_id=user.id
         )
         db.add(db_config)
     db.commit()
