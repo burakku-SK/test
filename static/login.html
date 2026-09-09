@@ -50,10 +50,12 @@
             body: JSON.stringify({ username, password })
           });
 
-          if (res.ok) {
-            // 認証成功時、トップページ（カレンダー）へ遷移
-            window.location.href = '/calendar';
-          } else {
+         if (res.ok) {
+        const data = await res.json();
+        // ログインしたユーザー名を保存
+        localStorage.setItem('currentUser', data.username);
+        window.location.href = '/calendar';
+      }else {
             // ID・パスワード誤り時の表示
             const data = await res.json();
             errorMsg.textContent = data.detail || 'ログインに失敗しました';
