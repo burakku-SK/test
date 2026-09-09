@@ -313,5 +313,5 @@ def read_login():
 def read_adduser():
     login_file = BASE_DIR / "static" / "adduser.html"
     if not login_file.exists():
-        raise HTTPException(status_code=404, detail="static/login.html が見つかりません。")
+        raise HTTPException(status_code=404, detail="static/adduser.html が見つかりません。")
     return FileResponse(login_file)
