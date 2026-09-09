@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, create_engine
 from database import Base
 
 class ExpenseModel(Base):
@@ -8,6 +8,7 @@ class ExpenseModel(Base):
     date = Column(String, index=True)  # "YYYY-MM-DD"
     item = Column(String, nullable=False)
     amount = Column(Integer, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 
 class MemoModel(Base):
     __tablename__ = "memos"
@@ -15,6 +16,7 @@ class MemoModel(Base):
     id = Column(Integer, primary_key=True, index=True)
     date = Column(String, unique=True, index=True)
     content = Column(String, nullable=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 
 class CheckListModel(Base):
     __tablename__ = "checklists"
@@ -23,6 +25,7 @@ class CheckListModel(Base):
     date = Column(String, index=True)
     text = Column(String, nullable=False)
     checked = Column(Boolean, default=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 
 # models.py の末尾に追加
 

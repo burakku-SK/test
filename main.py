@@ -52,15 +52,18 @@ def get_db():
 # --- Pydantic スキーマ定義 ---
 
 class ExpenseCreate(BaseModel):
+    username: str
     date: str
     item: str
     amount: int
 
 class MemoSave(BaseModel):
+    username: str
     date: str
     content: str
 
 class CheckListCreate(BaseModel):
+    username: str
     date: str
     text: str
 
@@ -136,64 +139,57 @@ def delete_user(username: str, db: Session = Depends(get_db)):
     return {"message": f"ユーザー {username} を削除しました"}
 
 
-# 1. 全データ取得 (初期読み込み用)
+# 1. データ取得（指定したユーザーのデータのみ返す）
 @app.get("/api/data")
-def get_all_data(db: Session = Depends(get_db)):
-    expenses = db.query(models.ExpenseModel).all()
-    memos = db.query(models.MemoModel).all()
-    checklists = db.query(models.CheckListModel).all()
-    monthly_plans = db.query(models.MonthlyPlanModel).all() if hasattr(models, 'MonthlyPlanModel') else []
-    config = db.query(models.ConfigModel).first() if hasattr(models, 'ConfigModel') else None
+def get_all_data(username: str, db: Session = Depends(get_db)):
+    # ユーザーを検索
+    user = db.query(models.UserModel).filter(models.UserModel.username == username).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="ユーザーが見つかりません")
+
+    # そのユーザーのデータだけを取得
+    expenses = db.query(models.ExpenseModel).filter(models.ExpenseModel.user_id == user.id).all()
+    memos = db.query(models.MemoModel).filter(models.MemoModel.user_id == user.id).all()
+    checklists = db.query(models.CheckListModel).filter(models.CheckListModel.user_id == user.id).all()
 
     daily_expenses = {}
     for E in expenses:
         if E.date not in daily_expenses:
             daily_expenses[E.date] = []
         daily_expenses[E.date].append({"id": E.id, "item": E.item, "amount": E.amount})
-        
+
     daily_checklists = {}
     for C in checklists:
         if C.date not in daily_checklists:
             daily_checklists[C.date] = []
         daily_checklists[C.date].append({"id": C.id, "text": C.text, "checked": C.checked})
 
-    plans_dict = {}
-    for p in monthly_plans:
-        plans_dict[p.month] = {"income": p.income, "fixed": p.fixed, "budget": p.budget}
-
     daily_memos = {m.date: m.content for m in memos if m.content and m.content.strip() != ""}
 
-    config_dict = {
-        "targetGoal": config.targetGoal if config else 0,
-        "dangerThreshold": config.dangerThreshold if config else 0,
-        "payday": config.payday if config else 15
-    }
     return {
         "dailyExpenses": daily_expenses,
         "dailyMemos": daily_memos,
         "dailyChecklists": daily_checklists,
-        "monthlyPlans": plans_dict, 
-        "config": config_dict
     }
 
 
-# 2. 支出 (Expenses) API
+# 2. 支出追加（ユーザーIDを紐付けて保存）
 @app.post("/api/expenses")
 def add_expense(expense: ExpenseCreate, db: Session = Depends(get_db)):
-    db_item = models.ExpenseModel(date=expense.date, item=expense.item, amount=expense.amount)
+    user = db.query(models.UserModel).filter(models.UserModel.username == expense.username).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="ユーザーが見つかりません")
+
+    db_item = models.ExpenseModel(
+        date=expense.date,
+        item=expense.item,
+        amount=expense.amount,
+        user_id=user.id  # ★ user_id をセット
+    )
     db.add(db_item)
     db.commit()
     db.refresh(db_item)
     return {"message": "success", "id": db_item.id}
-
-@app.delete("/api/expenses/{expense_id}")
-def delete_expense(expense_id: int, db: Session = Depends(get_db)):
-    db_item = db.query(models.ExpenseModel).filter(models.ExpenseModel.id == expense_id).first()
-    if not db_item:
-        raise HTTPException(status_code=404, detail="Expense not found")
-    db.delete(db_item)
-    db.commit()
-    return {"message": "deleted"}
 
 
 # 3. メモ (Memos) API
