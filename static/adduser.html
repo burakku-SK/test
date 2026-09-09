@@ -9,14 +9,11 @@
   </head>
   <body>
     <header>
-      <div class="test2">
-      <button class="test" style="color: #555;">新規登録</button>
-        </div>
     </header>
 
     <main class="login-main">
       <form class="login-box" id="loginForm">
-        <div style="text-align: center;font-size: 17px;" >カレンダーログイン</div>
+        <div style="text-align: center;font-size: 17px;" >新規登録</div>
         <div class="input-group">
           <label>ログインID</label>
           <input class="login-input" type="text" id="username">
@@ -28,7 +25,7 @@
         <!-- エラーメッセージ表示用の領域 -->
         <div id="errorMessage" style="color: red; text-align: center; font-size: 0.9em; min-height: 1.2em;"></div>
         <div class="submit-group">
-          <input class="submit-btn" type="submit" value="ログイン">
+          <input class="submit-btn" type="submit" value="登録する">
         </div>
       </form>
     </main>
@@ -44,7 +41,7 @@
         errorMsg.textContent = '';
 
         try {
-          const res = await fetch('/api/login', {
+          const res = await fetch('/api/user/register', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username, password })
@@ -52,11 +49,11 @@
 
           if (res.ok) {
             // 認証成功時、トップページ（カレンダー）へ遷移
-            window.location.href = '/calendar';
+            window.location.href = '/';
           } else {
             // ID・パスワード誤り時の表示
             const data = await res.json();
-            errorMsg.textContent = data.detail || 'ログインに失敗しました';
+            errorMsg.textContent = data.detail || '登録に失敗しました';
           }
         } catch (err) {
           errorMsg.textContent = '通信エラーが発生しました';

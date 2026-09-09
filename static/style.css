@@ -137,7 +137,18 @@ form {
     color: #555;
 }
 textarea,input{
-  border: 1.5px solid #e2e8f0;
-  border-radius: 5px;
-  box-sizing: border-box;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 5px;
+    box-sizing: border-box;
+}
+.test{
+    height: 40px;
+    width: 120px;
+    text-align: center;
+    padding:5px;
+    background:#ccfeff;
+    border: 2px solid #7a7a7a;
+} 
+.test2 {
+    text-align: right;
 }
