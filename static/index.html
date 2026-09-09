@@ -237,10 +237,37 @@
         }
 
         function updateCalendar(y, m) {
-            const cal = document.getElementById('calendar'); cal.innerHTML = '';
+            const cal = document.getElementById('calendar'); 
+            cal.innerHTML = '';
+            
+            // 1. 曜日ヘッダーを追加
+            const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
+            weekdays.forEach(day => {
+                const header = document.createElement('div');
+                header.style.fontWeight = 'bold';
+                header.style.textAlign = 'center';
+                header.style.fontSize = '0.8em';
+                header.style.padding = '2px';
+                header.style.color = day === '日' ? '#e53935' : (day === '土' ? '#1e88e5' : '#555');
+                header.innerText = day;
+                cal.appendChild(header);
+            });
+
+            const firstDayIndex = new Date(y, m, 1).getDay(); // 1日の曜日 (0:日 ~ 6:土)
             const days = new Date(y, m + 1, 0).getDate();
             const threshold = parseInt(config.dangerThreshold) || 3000;
-            
+
+            // 2. 月頭の空セルを挿入
+            for (let i = 0; i < firstDayIndex; i++) {
+                const emptyCell = document.createElement('div');
+                emptyCell.className = 'cell';
+                emptyCell.style.border = 'none';
+                emptyCell.style.background = 'transparent';
+                emptyCell.style.cursor = 'default';
+                cal.appendChild(emptyCell);
+            }
+
+            // 3. 日付セルを描画
             for(let i=1; i<=days; i++){
                 const d = `${y}-${(m+1).toString().padStart(2,'0')}-${i.toString().padStart(2,'0')}`;
                 const hasExpenses = dailyExpenses[d] && dailyExpenses[d].length > 0;

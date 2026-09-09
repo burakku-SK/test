@@ -227,11 +227,44 @@ def add_checklist(item: CheckListCreate, db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=404, detail="ユーザーが見つかりません")
 
-    db_item = models.CheckListModel(date=item.date, text=item.text, checked=False, user_id=user.id)
+    db_item = models.CheckListModel(
+        date=item.date,
+        text=item.text,
+        checked=False,
+        user_id=user.id  # ★ ここで user.id をセットします
+    )
     db.add(db_item)
     db.commit()
     db.refresh(db_item)
     return {"message": "success", "id": db_item.id}
+
+@app.patch("/api/checklists/{checklist_id}")
+def toggle_checklist(checklist_id: int, item: CheckListUpdate, db: Session = Depends(get_db)):
+    db_item = db.query(models.CheckListModel).filter(models.CheckListModel.id == checklist_id).first()
+    if not db_item:
+        raise HTTPException(status_code=404, detail="Checklist item not found")
+    db_item.checked = item.checked
+    db.commit()
+    return {"message": "updated"}
+
+@app.delete("/api/checklists/{checklist_id}")
+def delete_checklist(checklist_id: int, db: Session = Depends(get_db)):
+    db_item = db.query(models.CheckListModel).filter(models.CheckListModel.id == checklist_id).first()
+    if not db_item:
+        raise HTTPException(status_code=404, detail="Checklist item not found")
+    db.delete(db_item)
+    db.commit()
+    return {"message": "deleted"}
+
+
+# 5. 指定日付のデータ一括削除 API
+@app.delete("/api/date/{date_str}")
+def delete_date_data(date_str: str, db: Session = Depends(get_db)):
+    db.query(models.ExpenseModel).filter(models.ExpenseModel.date == date_str).delete()
+    db.query(models.MemoModel).filter(models.MemoModel.date == date_str).delete()
+    db.query(models.CheckListModel).filter(models.CheckListModel.date == date_str).delete()
+    db.commit()
+    return {"message": f"All data for {date_str} deleted"}
 
 
 # 6. 月間収支・予算 (Monthly Plans) API
@@ -285,8 +318,6 @@ def save_config(config: MonthlyConfigSave, db: Session = Depends(get_db)):
         db.add(db_config)
     db.commit()
     return {"message": "success"}
-
-
 # --- 静的ファイルのルーティング ---
 
 @app.get("/calendar")
