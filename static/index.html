@@ -6,6 +6,7 @@
     <title>カレンダー</title>
     <link rel="stylesheet" href="/static/style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 </head>
 <body>
 
@@ -13,7 +14,6 @@
         <button onclick="changeMonth(-1)" style="width: auto;background:#ff9800;color:#ffffff;"> 前月</button>
         <div id="currentMonth"></div>
         <button onclick="changeMonth(1)" style="width: auto;background:#ff9800;">翌月</button>
-        <button onclick="logout()" style="width: auto; background:#777; color:#fff; margin-left: auto;">ログアウト</button>
     </div>
 
     <!-- 上部ステータスカード -->
@@ -21,7 +21,7 @@
         <div style="display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; font-size: 0.8em; color: #555; margin-bottom: 8px; border-bottom: 1px solid #aabbcc; padding-bottom: 6px;">
             <div>目標金額: <input class="calendar-input" type="number" id="targetGoal" onchange="saveAll()" style="width:65px; font-size:1em;">円</div>
             <div>1日危険ライン: <input class="calendar-input" type="number" id="dangerThreshold" onchange="saveAll()" style="width:55px; font-size:1em;">円</div>
-            <div>給料日: 毎月<input class="calendar-input" type="number" id="payday" min="1" max="31" onchange="saveAll()" style="width:60px; font-size:1em;">日</div>
+            <div>給料日: 毎月<input class="calendar-input" type="number" id="payday" min="1" max="31" onchange="saveAll()" style="width:35px; font-size:1em;">日</div>
         </div>
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 5px;">
             <div id="totalStatus" style="font-weight:bold; font-size: 1.1em; color:#1976d2;"></div>
@@ -54,7 +54,7 @@
             </div>
         </div>
 
-        <!-- 右側：グラフとメモを切り替えるエリア -->
+        <!-- 右側：グラフとメモを切り替えるエリア（デフォルトはグラフ） -->
         <div class="right-column">
             <div class="info-box">
                 <!-- 切り替えタブ -->
@@ -106,31 +106,20 @@
     </div>
 
     <script>
-        // ログインチェック：未ログインの場合はログイン画面へリダイレクト
-        const currentUser = localStorage.getItem('currentUser');
-        if (!currentUser) {
-            window.location.href = '/';
-        }
-
-        let cur = new Date();
-        let dailyExpenses = {};
-        let dailyMemos = {};
-        let dailyChecklists = {};
-        let monthlyPlans = {};
-        let config = { targetGoal: 0, dangerThreshold: 0, payday: 15 };
+        let cur = new Date();//日付定義
+        let dailyExpenses = {};//カレンダーに紐づく日々の費用定義
+        let dailyMemos = {};//カレンダーに紐づく日々のメモ
+        let dailyChecklists = {};//カレンダーに紐づくチェックリスト
+        let monthlyPlans = {};//
+        let config = { targetGoal: 0, dangerThreshold: 0, payday: 15 };//ヘッダー部分のデフォルトの値 目標金額、危険ライン、給料日日付
         let selectedDate = new Date().toISOString().split('T')[0];
-        let myChart = null;
+        let myChart = null;//グラフ
 
-        // ログアウト処理
-        function logout() {
-            localStorage.removeItem('currentUser');
-            window.location.href = '/';
-        }
-
-        // FastAPIから特定ユーザーの最新データを取得
+        // FastAPIからデータベースの最新データを一括取得する
+        // FastAPIからデータベースの最新データを一括取得する
         async function initData() {
             try {
-                const res = await fetch(`/api/data?username=${encodeURIComponent(currentUser)}`);
+                const res = await fetch('/api/data');
                 if (res.ok) {
                     const data = await res.json();
                     dailyExpenses = data.dailyExpenses || {};
@@ -138,6 +127,7 @@
                     dailyChecklists = data.dailyChecklists || {};
                     monthlyPlans = data.monthlyPlans || {};
                     
+                    // サーバーからの設定値を取得（中身が空や部分欠落でもデフォルト値を個別に適用）
                     const c = data.config || {};
                     config = {
                         targetGoal: (c.targetGoal !== undefined && c.targetGoal !== null) ? c.targetGoal : 0,
@@ -148,14 +138,16 @@
             } catch (e) {
                 console.error("データの読み込みエラー:", e);
             } finally {
+                // 通信の成功・失敗に関わらず、初回起動時に必ず画面を描画する
                 render();
             }
         }
         
+        //HTMLの対応する場所にデータベースから値を格納する
         function render() {
-            document.getElementById('targetGoal').value = config.targetGoal || 0;
-            document.getElementById('dangerThreshold').value = config.dangerThreshold || 0;
-            document.getElementById('payday').value = config.payday || 15;
+            document.getElementById('targetGoal').value = config.targetGoal || 0;//データベースから目標金額の値を参照、Nullの場合0
+            document.getElementById('dangerThreshold').value = config.dangerThreshold || 0;//データベースから危険ラインの値を参照、Nullの場合0
+            document.getElementById('payday').value = config.payday || 15;//データベースから給料日の値を参照、Nullの場合15
             
             const y = cur.getFullYear(), m = cur.getMonth();
             const monthKey = `${y}-${(m+1).toString().padStart(2,'0')}`;
@@ -268,12 +260,12 @@
             }
         }
 
-        // 指定日のデータを一括削除
+        // 指定日のデータを一括削除 (DELETE API)
         async function deleteDayData(dateStr, event) {
             event.stopPropagation();
             if(confirm(`${dateStr} の支出・メモ・チェックリストをすべて削除しますか？`)) {
                 try {
-                    await fetch(`/api/date/${dateStr}?username=${encodeURIComponent(currentUser)}`, { method: 'DELETE' });
+                    await fetch(`/api/date/${dateStr}`, { method: 'DELETE' });
                     await initData();
                 } catch (e) {
                     console.error("日データ削除エラー:", e);
@@ -307,14 +299,14 @@
             });
         }
 
-        // メモ保存
+        // メモ保存 (POST API)
         async function saveDayMemo() {
             const memoText = document.getElementById('dayMemo').value;
             try {
                 await fetch('/api/memos', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username: currentUser, date: selectedDate, content: memoText })
+                    body: JSON.stringify({ date: selectedDate, content: memoText })
                 });
                 if(memoText.trim() === "") {
                     delete dailyMemos[selectedDate];
@@ -327,7 +319,7 @@
             }
         }
 
-        // チェックリスト追加
+        // チェックリスト追加 (POST API)
         async function addCheckItem() {
             const text = document.getElementById('checkItemName').value;
             if(!text) return alert("チェック項目を入力してね");
@@ -336,7 +328,7 @@
                 const res = await fetch('/api/checklists', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username: currentUser, date: selectedDate, text: text })
+                    body: JSON.stringify({ date: selectedDate, text: text })
                 });
                 if (res.ok) {
                     document.getElementById('checkItemName').value = '';
@@ -347,7 +339,7 @@
             }
         }
 
-        // チェックリストON/OFF切り替え
+        // チェックリストON/OFF切り替え (PATCH API)
         async function toggleCheckItem(idx) {
             if(dailyChecklists[selectedDate] && dailyChecklists[selectedDate][idx]) {
                 const item = dailyChecklists[selectedDate][idx];
@@ -357,7 +349,7 @@
                     await fetch(`/api/checklists/${itemId}`, {
                         method: 'PATCH',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ username: currentUser, checked: item.checked, date: selectedDate, index: idx })
+                        body: JSON.stringify({ checked: item.checked, date: selectedDate, index: idx })
                     });
                     updateMemoPaneContent();
                 } catch (e) {
@@ -366,13 +358,13 @@
             }
         }
 
-        // チェックリスト削除
+        // チェックリスト削除 (DELETE API)
         async function deleteCheckItem(idx) {
             if(dailyChecklists[selectedDate] && dailyChecklists[selectedDate][idx]) {
                 const item = dailyChecklists[selectedDate][idx];
                 const itemId = item.id || idx;
                 try {
-                    await fetch(`/api/checklists/${itemId}?username=${encodeURIComponent(currentUser)}&date=${selectedDate}&index=${idx}`, { method: 'DELETE' });
+                    await fetch(`/api/checklists/${itemId}?date=${selectedDate}&index=${idx}`, { method: 'DELETE' });
                     await initData();
                 } catch (e) {
                     console.error("チェックリスト削除エラー:", e);
@@ -380,7 +372,7 @@
             }
         }
 
-        // 支出追加
+        // 支出追加 (POST API)
         async function addExpense() {
             const item = document.getElementById('itemName').value;
             const amount = document.getElementById('amount').value;
@@ -391,7 +383,6 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        username: currentUser,
                         date: selectedDate,
                         item: item,
                         amount: parseInt(amount)
@@ -407,13 +398,13 @@
             }
         }
 
-        // 支出削除
+        // 支出削除 (DELETE API)
         async function deleteExpense(idx) {
             if(dailyExpenses[selectedDate] && dailyExpenses[selectedDate][idx]) {
                 const exp = dailyExpenses[selectedDate][idx];
                 const expId = exp.id || idx;
                 try {
-                    await fetch(`/api/expenses/${expId}?username=${encodeURIComponent(currentUser)}&date=${selectedDate}&index=${idx}`, { method: 'DELETE' });
+                    await fetch(`/api/expenses/${expId}?date=${selectedDate}&index=${idx}`, { method: 'DELETE' });
                     await initData();
                 } catch (e) {
                     console.error("支出削除エラー:", e);
@@ -421,7 +412,7 @@
             }
         }
 
-        // 月間目標・固定費保存
+        // 月間目標・固定費保存 (POST API)
         async function saveMonthlyData() {
             const monthKey = `${cur.getFullYear()}-${(cur.getMonth()+1).toString().padStart(2,'0')}`;
             const income = parseInt(document.getElementById('monthlyIncome').value) || 0;
@@ -432,7 +423,7 @@
                 await fetch('/api/monthly-plans', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username: currentUser, month: monthKey, income, fixed, budget })
+                    body: JSON.stringify({ month: monthKey, income, fixed, budget })
                 });
                 await initData();
             } catch (e) {
@@ -440,7 +431,7 @@
             }
         }
 
-        // 全般設定保存
+        // 全般設定保存 (POST API)
         async function saveAll() {
             config.targetGoal = parseInt(document.getElementById('targetGoal').value) || 0;
             config.dangerThreshold = parseInt(document.getElementById('dangerThreshold').value) || 0;
@@ -450,8 +441,10 @@
                 await fetch('/api/config', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username: currentUser, ...config })
+                    body: JSON.stringify(config)
                 });
+                
+                // 【修正点】 initData() を呼ばずに render() だけを実行する
                 render(); 
             } catch (e) {
                 console.error("設定保存エラー:", e);
@@ -484,7 +477,7 @@
             });
         }
         
-        // 初回ロード
+        // アプリ起動時にデータベースからデータをロード
         initData();
     </script>
 </body>
