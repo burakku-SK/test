@@ -32,7 +32,8 @@ class CheckListModel(Base):
 class MonthlyPlanModel(Base):
     __tablename__ = "monthly_plans"
 
-    month = Column(String, primary_key=True, index=True) # 例: "2026-09"
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)  # ★ id を主キーに変更
+    month = Column(String, index=True)
     income = Column(Integer, default=0)
     fixed = Column(Integer, default=0)
     budget = Column(Integer, default=0)
