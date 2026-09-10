@@ -143,6 +143,7 @@ def delete_user(username: str, db: Session = Depends(get_db)):
 
 # 1. データ取得（指定したユーザーのデータのみ返す）
 # 1. データ取得（指定したユーザーのデータのみ返す）
+# 1. データ取得（指定したユーザーのデータのみ返す）
 @app.get("/api/data")
 def get_all_data(username: str, db: Session = Depends(get_db)):
     # ユーザーを検索
@@ -150,7 +151,7 @@ def get_all_data(username: str, db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=404, detail="ユーザーが見つかりません")
 
-    # 各テーブルのデータ取得
+    # そのユーザーのデータだけを取得
     expenses = db.query(models.ExpenseModel).filter(models.ExpenseModel.user_id == user.id).all()
     memos = db.query(models.MemoModel).filter(models.MemoModel.user_id == user.id).all()
     checklists = db.query(models.CheckListModel).filter(models.CheckListModel.user_id == user.id).all()
@@ -173,7 +174,7 @@ def get_all_data(username: str, db: Session = Depends(get_db)):
 
     daily_memos = {m.date: m.content for m in memos if m.content and m.content.strip() != ""}
 
-    # ★ 月間収支データをフロントエンドの形式に整形
+    # ★ 月間収支データを辞書形式に整形
     monthly_savedata = {
         p.month: {"income": p.income, "fixed": p.fixed, "budget": p.budget}
         for p in monthly_plans
@@ -190,8 +191,8 @@ def get_all_data(username: str, db: Session = Depends(get_db)):
         "dailyExpenses": daily_expenses,
         "dailyMemos": daily_memos,
         "dailyChecklists": daily_checklists,
-        "monthlySavedata": monthly_savedata,  # ★ 追加
-        "config": config_data                # ★ 追加
+        "monthlyPlans": monthly_savedata,  # ★ "monthlySavedata" から "monthlyPlans" に変更
+        "config": config_data
     }
 
 
