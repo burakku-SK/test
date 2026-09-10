@@ -87,11 +87,6 @@ class MonthlyConfigSave(BaseModel):
     dangerThreshold: int
     payday: int
 
-class MonthlyConfigSave(BaseModel):
-    targetGoal: int
-    dangerThreshold: int
-    payday: int 
-
 class UserCreate(BaseModel):
     username: str
     password: str

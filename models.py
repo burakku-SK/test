@@ -36,6 +36,7 @@ class MonthlyPlanModel(Base):
     income = Column(Integer, default=0)
     fixed = Column(Integer, default=0)
     budget = Column(Integer, default=0)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 
 class ConfigModel(Base):
     __tablename__ = "configs"
@@ -44,6 +45,7 @@ class ConfigModel(Base):
     targetGoal = Column(Integer, default=0)
     dangerThreshold = Column(Integer, default=0)
     payday = Column(Integer, default=15)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 
 from sqlalchemy import Column, Integer, String, DateTime
 from sqlalchemy.sql import func
