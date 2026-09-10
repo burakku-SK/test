@@ -142,6 +142,7 @@ def delete_user(username: str, db: Session = Depends(get_db)):
 
 
 # 1. データ取得（指定したユーザーのデータのみ返す）
+# 1. データ取得（指定したユーザーのデータのみ返す）
 @app.get("/api/data")
 def get_all_data(username: str, db: Session = Depends(get_db)):
     # ユーザーを検索
@@ -149,10 +150,14 @@ def get_all_data(username: str, db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=404, detail="ユーザーが見つかりません")
 
-    # そのユーザーのデータだけを取得
+    # 各テーブルのデータ取得
     expenses = db.query(models.ExpenseModel).filter(models.ExpenseModel.user_id == user.id).all()
     memos = db.query(models.MemoModel).filter(models.MemoModel.user_id == user.id).all()
     checklists = db.query(models.CheckListModel).filter(models.CheckListModel.user_id == user.id).all()
+    
+    # ★ 月間収支と設定データの取得を追加
+    monthly_plans = db.query(models.MonthlyPlanModel).filter(models.MonthlyPlanModel.user_id == user.id).all()
+    config = db.query(models.ConfigModel).filter(models.ConfigModel.user_id == user.id).first()
 
     daily_expenses = {}
     for E in expenses:
@@ -168,10 +173,25 @@ def get_all_data(username: str, db: Session = Depends(get_db)):
 
     daily_memos = {m.date: m.content for m in memos if m.content and m.content.strip() != ""}
 
+    # ★ 月間収支データをフロントエンドの形式に整形
+    monthly_savedata = {
+        p.month: {"income": p.income, "fixed": p.fixed, "budget": p.budget}
+        for p in monthly_plans
+    }
+
+    # ★ 設定データを整形
+    config_data = {
+        "targetGoal": config.targetGoal if config else 0,
+        "dangerThreshold": config.dangerThreshold if config else 0,
+        "payday": config.payday if config else 15
+    }
+
     return {
         "dailyExpenses": daily_expenses,
         "dailyMemos": daily_memos,
         "dailyChecklists": daily_checklists,
+        "monthlySavedata": monthly_savedata,  # ★ 追加
+        "config": config_data                # ★ 追加
     }
 
 
