@@ -5,14 +5,108 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>wolfv3.7</title>
+    <style>
+        .container { max-width: 900px; margin: 10px auto; background: #ffffff; padding: 15px; border-radius: 12px; box-shadow: 0 8px 16px rgba(0,0,0,0.3); box-sizing: border-box; }
+        h1 { text-align: center; color: #2c3e50; margin: 5px 0; font-size: 1.4em; }
+        .subtitle { text-align: center; color: #7f8c8d; margin-bottom: 15px; font-size: 0.8em; }
+        
+        /* 行動表・マトリクス表を配置する親コンテナ（余白確保） */
+        .matrix-container {
+            min-height: 220px; 
+            min-width: 280px;
+            padding: 12px;
+            background-color: #fafafa;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            overflow-x: auto;
+        }
+
+        .matrix-table {
+            width: 100%;
+            table-layout: fixed;
+            border-collapse: collapse;
+            font-size: 11px;
+            text-align: center;
+        }
+
+        .matrix-table th, .matrix-table td {
+            border: 1px solid #bdc3c7;
+            padding: 6px 4px;
+        }
+
+        /* 1列目：対象プレイヤー名エリアの幅 */
+        .matrix-table th:first-child,
+        .matrix-table td:first-child {
+            width: 140px;
+            text-align: center;
+        }
+
+        /* 2列目以降：CO枠（1人あたりの固定幅） */
+        .matrix-table th:not(:first-child),
+        .matrix-table td:not(:first-child) {
+            width: 100px;
+            text-align: center;
+        }
+
+        .white-result { color: #2ecc71; font-weight: bold; background: #f2fbf5; }
+        .black-result { color: #000000; font-weight: bold; background: #fdf3f2; }
+        .guard-result { color: #3498db; font-weight: bold; background: #edf7fd; }
+        
+        .log-box { background: #1e1e1e; color: #fff; padding: 10px; height: 320px; overflow-y: auto; border-radius: 6px; font-family: monospace; margin-bottom: 15px; line-height: 1.5; border: 2px solid #34495e; }
+        .system { color: #57cc99; font-weight: bold; }
+        .divine-log { color: #f1c40f; font-weight: bold; }
+        .medium-log { color: #3498db; font-weight: bold; }
+        .wolf-talk { color: #ff6b6b; font-weight: bold; }
+        .hunter-gj { color: #2ecc71; font-weight: bold; }
+        .co-alert { color: #e67e22; font-weight: bold; font-size: 1.1em; background: #fef5ec; padding: 4px; border-left: 4px solid #e67e22; margin: 4px 0; }
+        .game-over { color: #f1c40f; font-weight: bold; font-size: 1.2em; text-align: center; display: block; margin: 10px 0; }
+        
+        .btn { background: #34495e; color: white; border: none; padding: 8px 12px; margin: 4px; border-radius: 4px; cursor: pointer; font-size: 12px; transition: background 0.2s; width: 15%;}
+        .btn:hover { background: #233142; }
+        .btn:disabled { background: #bdc3c7; cursor: not-allowed; }
+        
+        /*人狼役職用ボタン*/
+        .jobbtn { background: #34495e; color: white; border: none; padding: 8px 12px; margin: 4px; border-radius: 4px; cursor: pointer; font-size: 12px; transition: background 0.2s; width: 15%;}
+        .jobbtn:hover { background: #233142; }
+        .jobbtn:disabled { background: #bdc3c7; cursor: not-allowed; }
+        
+
+        .cmd-area { background: #f4f6f7; border: 1px solid #d5dbdb; padding: 10px; border-radius: 8px; margin-bottom: 15px; text-align: center; }
+        .cmd-title { font-weight: bold; color: #2c3e50; margin-bottom: 5px; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
+        .btn-force-co { font-weight: bold; color: white; margin: 4px; }
+        .btn-force-seer { background: #9b59b6; }
+        .btn-force-seer:hover { background: #8e44ad; }
+        .btn-force-med { background: #2980b9; }
+        .btn-force-med:hover { background: #2471a3; }
+        .btn-force-hunt { background: #27ae60; }
+        .btn-force-hunt:hover { background: #219a52; }
+        
+        .btn-divine-order { background: #9b59b6; font-weight: bold; padding: 10px 15px; font-size: 13px; }
+        .btn-auto-order { background: #16a085; font-weight: bold; padding: 10px 15px; font-size: 13px; }
+        .btn-retry { background: #2ecc71; font-weight: bold; font-size: 14px; padding: 10px 20px; display: block; margin: 15px auto 0 auto; }
+        
+        .choices { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; justify-content: center; align-items: center; }
+        .cb-label { background: #f1f3f5; padding: 6px 10px; border-radius: 4px; border: 1px solid #ced4da; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; font-size: 12px; }
+        
+        .status-panel { background: #f8f9fa; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-size: 12px; display: flex; justify-content: space-between; border-left: 5px solid #34495e; }
+        .phase-title { color: white; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 0.9em; display: inline-block; margin-bottom: 5px; }
+        
+        .achieve-area { margin-top: 20px; background: #22313f; padding: 12px; border-radius: 8px; color: white; }
+        .achieve-title { font-weight: bold; font-size: 1em; border-bottom: 1px solid #34495e; padding-bottom: 5px; margin-bottom: 10px; color: #f1c40f; }
+        .achieve-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; }
+        .achieve-card { background: #2c3e50; border: 2px solid #34495e; padding: 8px; border-radius: 6px; font-size: 11px; opacity: 0.35; transition: all 0.3s; }
+        .achieve-card.unlocked { opacity: 1; border-color: #f1c40f; background: #34495e; box-shadow: 0 0 6px rgba(241, 196, 15, 0.4); }
+        .achieve-name { font-weight: bold; color: #bdc3c7; margin-bottom: 3px; }
+        .unlocked .achieve-name { color: #f1c40f; }
+    </style>
 </head>
 <body>
-<div class="container status-card" >
-    <div style="display: flex; justify-content: space-between; align-items: center;">
-        <a href="/calendar" style="font-size: 1.1em; font-weight: bold; color: #000000; text-decoration: none;">＜カレンダーへ戻る</a>
-        <label id="currentMonth" style="font-size: 1.1em; font-weight: bold; color: #000000;"></label>
-    </div>
-<div class="matrix-container">
+
+<div class="container">
+    <div><a href="/calendar" style="font-size: 1.1em; font-weight: bold; color: #000000;text-decoration: none;">＜カレンダーへ戻る</a></div>
+    
+    <div class="matrix-container">
         <table class="matrix-table">
             <thead id="tableHeader"></thead>
             <tbody id="tableBody"></tbody>
@@ -20,11 +114,10 @@
     </div>
 
     <div class="cmd-area">
-        <div class="cmd-title">CO指示
-        <button class="jobbtn btn-force-co btn-force-seer" id="forceSeerBtn" onclick="triggerForceSeerCO()">🔮 占いCO</button>
-        <button class="jobbtn btn-force-co btn-force-med" id="forceMedBtn" onclick="triggerForceMediumCO()">⚱️ 霊媒CO</button>
-        <button class="jobbtn btn-force-co btn-force-hunt" id="forceHuntBtn" onclick="triggerForceHunterCO()">🛡️ 狩人CO</button>
-        </div>
+        <div class="cmd-title">⚙️ 観測者特権：強制CO命令コマンド</div>
+        <button class="jobbtn btn-force-co btn-force-seer" id="forceSeerBtn" onclick="triggerForceSeerCO()">🔮 占い師強制CO</button>
+        <button class="jobbtn btn-force-co btn-force-med" id="forceMedBtn" onclick="triggerForceMediumCO()">⚱️ 霊媒師強制CO</button>
+        <button class="jobbtn btn-force-co btn-force-hunt" id="forceHuntBtn" onclick="triggerForceHunterCO()">🛡️ 狩人強制CO</button>
     </div>
 
     <div class="status-panel" id="statusPanel"></div>
@@ -73,35 +166,6 @@ function forceAllActions(targetId) {
 
     executeAllNightActions();
 }
-let cur = new Date();
-
-function renderMonth() {
-    const y = cur.getFullYear();
-    const m = cur.getMonth();
-    
-    // HTML要素の描画
-    document.getElementById('currentMonth').innerText = `${y}年 ${m + 1}月`;
-
-    // 季節判定 (3~5月: spring, 6~8月: summer, 9~11月: autumn, 12~2月: winter)
-    const monthNum = m + 1;
-    let theme = 'winter';
-
-    if (monthNum >= 3 && monthNum <= 5) {
-        theme = 'spring';
-    } else if (monthNum >= 6 && monthNum <= 8) {
-        theme = 'summer';
-    } else if (monthNum >= 9 && monthNum <= 11) {
-        theme = 'autumn';
-    }
-
-    // html要素の data-theme 属性を切り替えてCSS変数を反映
-    document.documentElement.setAttribute('data-theme', theme);
-}
-
-// 初期表示
-renderMonth();
-
-
 
 let day = 1;
 let players = [];
@@ -542,19 +606,19 @@ function checkProvingBreak() {
 }
 
 function showVoteChoices() {
-    document.getElementById("actionTitle").innerText = "投票指示:";
+    document.getElementById("actionTitle").innerText = "あなたの介入（投票指示）:";
     const btnArea = document.getElementById("choiceButtons");
     if (!btnArea) return; btnArea.innerHTML = "";
     
     const freeBtn = document.createElement("button");
     freeBtn.className = "btn btn-free";
-    freeBtn.innerText = "自由投票";
+    freeBtn.innerText = "⏳ 【自由投票】脳内ブラックリストや黒判定へ突撃";
     freeBtn.onclick = () => { processNPCVotes("free"); };
     btnArea.appendChild(freeBtn);
     
     const greyBtn = document.createElement("button");
     greyBtn.className = "btn btn-grey";
-    greyBtn.innerText = "グレラン";
+    greyBtn.innerText = "🎲 【グレラン】誰からも占われていない完全グレー位置";
     greyBtn.onclick = () => { processNPCVotes("grey"); };
     btnArea.appendChild(greyBtn);
     
@@ -562,7 +626,7 @@ function showVoteChoices() {
         if (p.id !== 0 && p.isAlive) {
             const btn = document.createElement("button");
             btn.className = "btn";
-            btn.innerText = `${p.name} を指定`;
+            btn.innerText = `${p.name} へのヘイト誘導`;
             btn.onclick = () => { processNPCVotes(p.id); };
             btnArea.appendChild(btn);
         }
@@ -570,7 +634,7 @@ function showVoteChoices() {
 }
 
 function processNPCVotes(mode, attempt = 1) {
-    if (attempt === 1) addLog(`--- 【開票結果】 ---`, "system");
+    if (attempt === 1) addLog(`--- 【開票結果：絶対服従モード】 ---`, "system");
 
     let voteCounts = {};
     players.forEach(p => { if (p.id !== 0 && p.isAlive) voteCounts[p.id] = 0; });
@@ -656,7 +720,7 @@ function processNPCVotes(mode, attempt = 1) {
 }
 
 function startNightOrderPhase() {
-    addLog(`--- 【夜のフェーズ：】 ---`, "system");
+    addLog(`--- 【夜のフェーズ：神託の刻】 ---`, "system");
     nightPhase = "seer";
     updateStatusPanel();
     activeSeerIdsToOrder = coPlayersList.filter(cp => cp.role === "占い師" && players.find(p => p.id === cp.id).isAlive).map(cp => cp.id);

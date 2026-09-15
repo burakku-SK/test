@@ -1,17 +1,152 @@
-body { font-family: sans-serif; padding: 10px; background: #66aaff; font-size: 14px; margin: 0; }
-.header { display: flex; justify-content: space-between; align-items: center; font-weight: bold; margin-bottom: 10px; }
-.info-box { background:#f6dddd; padding: 10px; border-radius: 8px; margin-bottom: 10px; }
-.status-card { background: #f6dddd; padding: 12px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #aabbcc; }
-.calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; margin: 10px 0; }
-.cell { background: #FFF; padding: 4px; text-align: center; border: 1px solid #ddd; height: 45px; cursor: pointer; position: relative; display: flex; flex-direction: column; justify-content: center; align-items: center; }
-.cell-danger { background-color: #ffcdd2 !important; border: 2px solid #e53935; }
-.calendar-input, textarea { padding: 5px; margin-bottom: 5px; width: 90%; font-family: sans-serif; }
-button { padding: 8px; border-radius: 4px; border: none; background: #4caf50; color: white; cursor: pointer; width: 100%; margin-top: 5px; }
-table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 0.9em; }
-th, td { border: 1px solid #aabbcc; padding: 5px; text-align: center; }
-.list-item { display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 5px 0; font-size: 0.9em; align-items: center; }
-.chart-wrapper { height: 280px; background: #F5F5F5; }
-#currentMonth{background: #FFF;font-size: 20px;padding-top: 5px;}
+/*和風四季パレット*/
+/* --- 共通設定 --- */
+:root {
+    --radius-sm: 6px;
+    --radius-md: 12px;
+    --transition-theme: background-color 0.3s ease, color 0.3s ease;
+    --danger-bg: #ffcdd2;    /* 危険・警告背景 */
+    --danger-border: #e53935;/* 危険・警告枠線 */
+    --bg-surface: #f5f5f5; 
+}
+
+/* --- 春：桜 --- */
+[data-theme="spring"] {
+    --bg-base: #fdeff2;      /* 桜色 */
+    --bg-card: #f7e2e6;      /* 薄花桜 */
+    --accent-main: #e05a82;  /* 紅梅色 */
+    --accent-sub: #5db180;   /* 若竹色 */
+    --text-main: #2b333e;    /* 鉄紺 */
+    --text-muted: #73626e;   /* 控えめ文字 */
+    --border: #e2b8c2;       /* 枠線 */
+
+}
+
+/* --- 夏：浅瀬と夏空 --- */
+[data-theme="summer"] {
+    --bg-base: #e8f5f6;
+    --bg-card: #d4ebed;
+    --accent-main: #e85f50;
+    --accent-sub: #00a4b5;
+    --text-main: #1b2e45;
+    --text-muted: #53697a;
+    --border: #a2c2c7;
+}
+
+/* --- 秋：秋日和 --- */
+[data-theme="autumn"] {
+    --bg-base: #f8f4ec;
+    --bg-card: #ece3d2;
+    --accent-main: #ca4b38;
+    --accent-sub: #c88a2e;
+    --text-main: #2d2238;
+    --text-muted: #6e6278;
+    --border: #d2c1a8;
+}
+
+/* --- 冬：銀世界と寒椿 --- */
+[data-theme="winter"] {
+    --bg-base: #f0f4f8;
+    --bg-card: #dbe4ed;
+    --accent-main: #c93055;
+    --accent-sub: #2a6f9d;
+    --text-main: #212529;
+    --text-muted: #606972;
+    --border: #b8c8d8;
+}
+
+
+body {
+     font-family: sans-serif;
+     padding: 10px;
+     background: var(--bg-base);
+     color: var(--text-main);
+     font-size: 14px;
+     margin: 0;
+     transition: var(--transition-theme);
+    }
+.header {
+    display: flex;
+    background: var(--bg-base);
+    justify-content: space-between;
+    align-items: center;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+.info-box {
+    background:var(--bg-card);
+    padding: 10px;
+    border-radius: 8px;
+    margin-bottom: 10px
+}
+.status-card {
+    background: var(--bg-card);
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    border: 1px solid #aabbcc;
+}
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+    margin: 10px 0;
+}
+.cell {
+    background: var(--bg-surface);
+    padding: 4px;
+    text-align: center;
+    border: 1px solid #ddd;
+    height: 45px; cursor: pointer;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+.cell-danger {
+    background-color:var(--danger-bg) !important;
+    border: 2px solid #e53935;
+}
+.calendar-input, textarea {
+    padding: 5px;
+    margin-bottom: 5px;
+    width: 90%;
+    font-family: sans-serif
+}
+.button { 
+    padding: 8px;
+    border-radius: 4px;
+    border: none;
+    color: var(--bg-surface);
+    cursor: pointer;
+    margin-top: 5px;
+    background:#ff9800;
+}
+table { 
+    width: 100%;
+    border-collapse: collapse;
+    margin: 10px 0;
+    font-size: 0.9em;
+}
+th, td {
+    border: 1px solid #aabbcc;
+    padding: 5px; text-align: center;
+}
+.list-item {
+    display: flex;
+    justify-content: space-between;
+    border-bottom: 1px solid #eee;
+    padding: 5px 0; font-size: 0.9em;
+    align-items: center;
+}
+.chart-wrapper {
+    height: 280px;
+    background: #F5F5F5;
+}
+#currentMonth{
+    font-size: 25px;
+    padding: 3px;
+}
 
 /* カレンダーセルの削除用×ボタン */
 .cell-delete-btn {
@@ -39,16 +174,16 @@ th, td { border: 1px solid #aabbcc; padding: 5px; text-align: center; }
 /* タブ切り替えエリアのスタイル */
 .tab-buttons {
     display: flex;
-    background:#f6dddd;
+    background:#e2dede;
     border-radius: 6px;
     padding: 3px;
     margin-bottom: 10px;
 }
 .tab-btn {
+    padding: 8px;
     flex: 1;
-    padding: 6px;
     text-align: center;
-    background: transparent;
+    background: var(--bg-base);
     border: none;
     cursor: pointer;
     font-weight: bold;
@@ -58,7 +193,7 @@ th, td { border: 1px solid #aabbcc; padding: 5px; text-align: center; }
     margin-top: 0;
 }
 .tab-btn.active {
-    background: #F5F5F5;
+    background:var(--bg-surface);
     color: #2196f3;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
@@ -152,3 +287,149 @@ textarea,input{
 .test2 {
     text-align: right;
 }
+
+
+
+
+
+
+
+
+
+
+
+/* wolf */
+.container { max-width: 900px; margin: 10px auto; padding: 15px; border-radius: 12px; box-shadow: 0 8px 16px rgba(0,0,0,0.3); box-sizing: border-box; }
+        h1 { text-align: center; color: #2c3e50; margin: 5px 0; font-size: 1.4em; }
+        .subtitle { text-align: center; color: #7f8c8d; margin-bottom: 15px; font-size: 0.8em; }
+        
+        /* 行動表・マトリクス表を配置する親コンテナ（余白確保） */
+        .matrix-container {
+            min-height: 220px; 
+            min-width: 280px;
+            padding: 12px;
+            background-color: #fafafa;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            overflow-x: auto;
+        }
+
+        .matrix-table {
+            width: 100%;
+            table-layout: fixed;
+            border-collapse: collapse;
+            font-size: 11px;
+            text-align: center;
+        }
+
+        .matrix-table th, .matrix-table td {
+            border: 1px solid #bdc3c7;
+            padding: 6px 4px;
+        }
+
+        /* 1列目：対象プレイヤー名エリアの幅 */
+        .matrix-table th:first-child,
+        .matrix-table td:first-child {
+            width: 140px;
+            text-align: center;
+        }
+
+        /* 2列目以降：CO枠（1人あたりの固定幅） */
+        .matrix-table th:not(:first-child),
+        .matrix-table td:not(:first-child) {
+            width: 100px;
+            text-align: center;
+        }
+
+        .white-result { color: #2ecc71; font-weight: bold; background: #f2fbf5; }
+        .black-result { color: #000000; font-weight: bold; background: #fdf3f2; }
+        .guard-result { color: #3498db; font-weight: bold; background: #edf7fd; }
+        
+        .log-box { background: #1e1e1e; color: #fff; padding: 10px; height: 320px; overflow-y: auto; border-radius: 6px; font-family: monospace; margin-bottom: 15px; line-height: 1.5; border: 2px solid #34495e; }
+        .system { color: #57cc99; font-weight: bold; }
+        .divine-log { color: #f1c40f; font-weight: bold; }
+        .medium-log { color: #3498db; font-weight: bold; }
+        .wolf-talk { color: #ff6b6b; font-weight: bold; }
+        .hunter-gj { color: #2ecc71; font-weight: bold; }
+        .co-alert { color: #e67e22; font-weight: bold; font-size: 1.1em; background: #fef5ec; padding: 4px; border-left: 4px solid #e67e22; margin: 4px 0; }
+        .game-over { color: #f1c40f; font-weight: bold; font-size: 1.2em; text-align: center; display: block; margin: 10px 0; }
+        
+        .btn { background: #34495e; color: white; border: none; padding: 8px 12px; margin: 4px;  cursor: pointer; font-size: 12px; transition: background 0.2s; width: 15%;}
+        .btn:hover { background: #233142; }
+        .btn:disabled { background: #bdc3c7; cursor: not-allowed; }
+        
+        /*人狼役職用ボタン*/
+        .jobbtn {
+            color: white;
+            border: none;
+            padding: 8px 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: background 0.2s;
+            width: auto; /* width: 15% を解除 */
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .jobbtn:hover {
+            opacity: 0.9;
+        }
+
+        .jobbtn:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+        }
+                
+
+                .cmd-area {
+            background: #f4f6f8;
+            border: 1px solid #e2e8f0;
+            padding: 12px 24px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+        }
+                .cmd-title {
+            font-weight: bold;
+            color: #2c3e50;
+            font-size: 18px;
+            white-space: nowrap;
+        }
+        .cmd-buttons {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .btn-force-co { font-weight: bold; color: white; margin: 4px; }
+        .btn-force-seer { background: #9b59b6; }
+        .btn-force-seer:hover { background: #8e44ad; }
+        .btn-force-med { background: #2980b9; }
+        .btn-force-med:hover { background: #2471a3; }
+        .btn-force-hunt { background: #27ae60; }
+        .btn-force-hunt:hover { background: #219a52; }
+        
+        .btn-divine-order { background: #9b59b6; font-weight: bold; padding: 10px 15px; font-size: 13px; }
+        .btn-auto-order { background: #16a085; font-weight: bold; padding: 10px 15px; font-size: 13px; }
+        .btn-retry { background: #2ecc71; font-weight: bold; font-size: 14px; padding: 10px 20px; display: block; margin: 15px auto 0 auto; }
+        
+        .choices { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; justify-content: center; align-items: center; }
+        .cb-label { background: #f1f3f5; padding: 6px 10px; border-radius: 4px; border: 1px solid #ced4da; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; font-size: 12px; }
+        
+        .status-panel { background: #f8f9fa; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-size: 12px; display: flex; justify-content: space-between; border-left: 5px solid #34495e; }
+        .phase-title { color: white; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 0.9em; display: inline-block; margin-bottom: 5px; }
+        
+        .achieve-area { margin-top: 20px; background: #22313f; padding: 12px; border-radius: 8px; color: white; }
+        .achieve-title { font-weight: bold; font-size: 1em; border-bottom: 1px solid #34495e; padding-bottom: 5px; margin-bottom: 10px; color: #f1c40f; }
+        .achieve-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; }
+        .achieve-card { background: #2c3e50; border: 2px solid #34495e; padding: 8px; border-radius: 6px; font-size: 11px; opacity: 0.35; transition: all 0.3s; }
+        .achieve-card.unlocked { opacity: 1; border-color: #f1c40f; background: #34495e; box-shadow: 0 0 6px rgba(241, 196, 15, 0.4); }
+        .achieve-name { font-weight: bold; color: #bdc3c7; margin-bottom: 3px; }
+        .unlocked .achieve-name { color: #f1c40f; }

@@ -8,12 +8,11 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-
     <div class="header">
-        <button onclick="changeMonth(-1)" style="width: auto;background:#ff9800;color:#ffffff;"> 前月</button>
+        <button class="button" onclick="changeMonth(-1)" > 前月</button>
         <div id="currentMonth"></div>
-        <button onclick="changeMonth(1)" style="width: auto;background:#ff9800;">翌月</button>
-        <button onclick="logout()" style="width: auto; background:#777; color:#fff; margin-left: auto;">ログアウト</button>
+        <button class="button" onclick="changeMonth(1)" >翌月</button>
+        <button class="button" onclick="logout()" style="margin-left: auto;">ログアウト</button>
     </div>
 
     <!-- 上部ステータスカード -->
@@ -41,7 +40,7 @@
             <tr><td>予算設定</td><td><input class="calendar-input" type="number" id="monthlyBudget" style="width:80px;text-align: center">円</td><td>C</td></tr>
         </table>
         <div id="monthlyBudgetStatus" style="font-weight: bold; color: #d32f2f; margin-top:5px;"></div>
-        <button onclick="saveMonthlyData()" style="background:#4caf50">収支・予算を保存</button>
+        <button class="button" onclick="saveMonthlyData()" style="width: 100%;">収支・予算を保存</button>
     </div>
 
     <!-- メイン領域（カレンダー ＆ グラフ／メモ切り替えエリア） -->
@@ -86,7 +85,7 @@
                     <div style="font-weight:bold; margin-bottom:5px; font-size:0.9em; color:#555;">チェックリスト</div>
                     <div style="display: flex; gap: 5px; margin-bottom: 5px;">
                         <input class="calendar-input" type="text" id="checkItemName" placeholder="チェック項目を入力" style="margin-bottom:0; flex:1;">
-                        <button onclick="addCheckItem()" style="width: auto; margin-top:0; background:#ff9800;">追加</button>
+                        <button class="button" onclick="addCheckItem()" style="width: auto; margin-top:0; background:#ff9800;">追加</button>
                     </div>
                     <div id="checkListContainer" style="margin-bottom: 10px; max-height: 120px; overflow-y: auto;"></div>
 
@@ -97,7 +96,7 @@
                     <div style="display: flex; gap: 5px; margin-bottom: 5px;">
                         <input class="calendar-input" type="text" id="itemName" placeholder="項目名" style="margin-bottom:0; flex:1;">
                         <input class="calendar-input" type="number" id="amount" placeholder="金額(円)" style="margin-bottom:0; width:80px;">
-                        <button onclick="addExpense()" style="width: auto; margin-top:0; background:#ff9800;">追加</button>
+                        <button class="button" onclick="addExpense()" style="width: auto; margin-top:0; background:#ff9800;">追加</button>
                     </div>
                     <div id="expenseList" style="margin-top:5px; max-height: 120px; overflow-y: auto;"></div>
                 </div>
@@ -153,6 +152,21 @@
         }
         
         function render() {
+            // 1. 表示中の月（cur）に合わせて季節テーマを自動セット
+            const month = cur.getMonth() + 1;
+            let theme = 'spring';
+
+            if (month >= 3 && month <= 5) {
+                theme = 'spring';
+            } else if (month >= 6 && month <= 8) {
+                theme = 'summer';
+            } else if (month >= 9 && month <= 11) {
+                theme = 'autumn';
+            } else {
+                theme = 'winter';
+            }
+            document.documentElement.setAttribute('data-theme', theme);
+
             document.getElementById('targetGoal').value = config.targetGoal || 0;
             document.getElementById('dangerThreshold').value = config.dangerThreshold || 0;
             document.getElementById('payday').value = config.payday || 15;
